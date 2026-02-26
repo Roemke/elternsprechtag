@@ -1,0 +1,4 @@
+CREATE DATABASE elternsprechtag CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'eltern'@'localhost' IDENTIFIED BY 'esp#Since2026DBU';
+GRANT ALL PRIVILEGES ON elternsprechtag.* TO 'eltern'@'localhost';
+FLUSH PRIVILEGES;

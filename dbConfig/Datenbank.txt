@@ -1,0 +1,4 @@
+Datei create.sql anlegen, s. Beispiel, pass editieren, 
+einspielen. 
+Tabellen anlegen, s. Beispiel schema.sql.example 
+
