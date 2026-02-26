@@ -25,6 +25,8 @@ app.get('/api/status', (req, res) => {
 const schoolsRouter = require('./routes/schools');
 app.use('/api/schools', schoolsRouter);
 
+const usersRouter = require('./routes/users');
+app.use('/api/users', usersRouter);
 
 // WebSocket Verbindung
 io.on('connection', (socket) => {
