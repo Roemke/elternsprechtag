@@ -1,0 +1,85 @@
+USE elternsprechtag;
+
+-- Schulen
+CREATE TABLE IF NOT EXISTS schools (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User (Globaler Admin, Schuladmin, Lehrer)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    school_id INT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('global_admin', 'school_admin', 'teacher') NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (school_id) REFERENCES schools(id)
+);
+
+-- Sprechtage
+CREATE TABLE IF NOT EXISTS events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    school_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
+    slot_duration INT NOT NULL DEFAULT 15,
+    active BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (school_id) REFERENCES schools(id)
+);
+
+-- Lehrer-Zeitrahmen pro Sprechtag
+CREATE TABLE IF NOT EXISTS teacher_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT NOT NULL,
+    event_id INT NOT NULL,
+    time_start TIME NOT NULL,
+    time_end TIME NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES users(id),
+    FOREIGN KEY (event_id) REFERENCES events(id)
+);
+
+-- Slots (generiert aus teacher_events)
+CREATE TABLE IF NOT EXISTS slots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_event_id INT NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    FOREIGN KEY (teacher_event_id) REFERENCES teacher_events(id)
+);
+
+-- Buchungen
+CREATE TABLE IF NOT EXISTS bookings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    slot_id INT NOT NULL UNIQUE,
+    cookie_id VARCHAR(255) NOT NULL,
+    parent_name VARCHAR(255) NOT NULL,
+    child_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (slot_id) REFERENCES slots(id)
+);
+
+-- Warteliste
+CREATE TABLE IF NOT EXISTS waitlist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    slot_id INT NOT NULL,
+    cookie_id VARCHAR(255) NOT NULL,
+    parent_name VARCHAR(255) NOT NULL,
+    child_name VARCHAR(255) NOT NULL,
+    position INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (slot_id) REFERENCES slots(id)
+);
+CREATE TABLE IF NOT EXISTS settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    school_id INT NOT NULL UNIQUE,
+    smtp_host VARCHAR(255),
+    smtp_port INT DEFAULT 587,
+    smtp_user VARCHAR(255),
+    smtp_password VARCHAR(255),
+    smtp_from VARCHAR(255),
+    FOREIGN KEY (school_id) REFERENCES schools(id)
+);
