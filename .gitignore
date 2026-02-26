@@ -5,3 +5,4 @@ node_modules/
 *.swp
 *.sql 
 #die .sql.example bleiben
+vorgehen.md
