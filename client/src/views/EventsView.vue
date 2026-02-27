@@ -1,11 +1,18 @@
 <template>
   <div>
+    <ConfirmDialog />
+    <!--Bestätigung für löschen bei saveEvent-->
     <div class="flex justify-content-between align-items-center mb-4">
       <h2 class="m-0">Sprechtage</h2>
       <Button label="Neuer Sprechtag" icon="pi pi-plus" @click="showDialog = true" />
     </div>
 
     <DataTable :value="events" stripedRows>
+      <Column header="Schule" sortable :sortField="(data) => schoolName(data.school_id)">
+        <template #body="{ data }">
+          {{ schoolName(data.school_id) }}
+        </template>
+      </Column>
       <Column field="name" header="Name" sortable />
       <Column field="date" header="Datum" sortable>
         <template #body="{ data }">
@@ -129,12 +136,7 @@
     </Dialog>
 
     <!-- Lehrer verwalten Dialog -->
-    <Dialog
-      v-model:visible="showTeachersDialog"
-      header="Lehrer verwalten"
-      modal
-      style="width: 600px"
-    >
+    <Dialog v-model:visible="showTeachersDialog" header="Lehrer verwalten" modal style="width: 90%">
       <DataTable :value="eventTeachers" stripedRows>
         <Column header="Name">
           <template #body="{ data }"> {{ data.last_name }}, {{ data.first_name }} </template>
@@ -151,7 +153,16 @@
         </Column>
         <Column header="Aktiv">
           <template #body="{ data }">
-            <Checkbox v-model="data.active" :binary="true" @change="updateTeacher(data)" />
+            <!--
+              <Checkbox v-model="data.active" :binary="true"
+              @change="updateTeacher(data)" />
+              so nicht, jeder Wechsel soll erst durch den Speichern Button am Ende bestätigt werden, damit nicht bei jedem Klick ein Request losgeschickt wird
+              -->
+            <Checkbox
+              :modelValue="data.active"
+              :binary="true"
+              @change="data.active = !data.active"
+            />
           </template>
         </Column>
         <Column header="">
@@ -161,6 +172,12 @@
         </Column>
       </DataTable>
       <template #footer>
+        <Button
+          label="Alles speichern"
+          icon="pi pi-check"
+          @click="saveAllTeachers"
+          :loading="loading"
+        />
         <Button label="Schließen" severity="secondary" @click="showTeachersDialog = false" />
       </template>
     </Dialog>
@@ -179,6 +196,10 @@ import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
+import { useConfirm } from 'primevue/useconfirm'
+import ConfirmDialog from 'primevue/confirmdialog'
+
+const confirmD = useConfirm()
 
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const events = ref([])
@@ -194,8 +215,8 @@ const form = ref({
   school_id: null,
   name: '',
   date: null,
-  time_start: '15:00',
-  time_end: '19:00',
+  time_start: '15:30',
+  time_end: '18:30',
   slot_duration: 15,
   active: true,
 })
@@ -209,6 +230,11 @@ const editForm = ref({
   slot_duration: 15,
   active: false,
 })
+
+//helper
+function schoolName(school_id) {
+  return schools.value.find((s) => s.id === school_id)?.name || '-'
+}
 
 async function loadEvents() {
   const url = user?.role === 'global_admin' ? '/api/events' : `/api/events/school/${user.school_id}`
@@ -244,10 +270,12 @@ async function createEvent() {
         school_id: null,
         name: '',
         date: null,
-        time_start: '15:00',
-        time_end: '19:00',
+        time_start: '15:30',
+        time_end: '18:30',
         slot_duration: 15,
       }
+      const eventData = await res.json()
+      await fetch(`/api/slots/generate/${eventData.id}`, { method: 'POST' })
       await loadEvents()
     }
   } finally {
@@ -255,7 +283,13 @@ async function createEvent() {
   }
 }
 
+const originalTime = ref({ time_start: '', time_end: '', slot_duration: 15 }) //speichert die ursprünglichen Zeiten, um zu vergleichen ob sie geändert wurden
 function editEvent(event) {
+  originalTime.value = {
+    time_start: event.time_start,
+    time_end: event.time_end,
+    slot_duration: event.slot_duration,
+  }
   editForm.value = {
     id: event.id,
     name: event.name,
@@ -268,7 +302,8 @@ function editEvent(event) {
   showEditDialog.value = true
 }
 
-async function saveEvent() {
+//speichern ausgelagert
+async function doSaveEvent(timesChanged) {
   loading.value = true
   try {
     const res = await fetch(`/api/events/${editForm.value.id}`, {
@@ -279,14 +314,38 @@ async function saveEvent() {
         date: editForm.value.date
           ? new Date(editForm.value.date).toISOString().split('T')[0]
           : null,
+        timesChanged,
       }),
     })
     if (res.ok) {
+      await fetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
       showEditDialog.value = false
       await loadEvents()
     }
   } finally {
     loading.value = false
+  }
+}
+
+async function saveEvent() {
+  const timesChanged =
+    editForm.value.time_start !== originalTime.value.time_start ||
+    editForm.value.time_end !== originalTime.value.time_end ||
+    editForm.value.slot_duration !== originalTime.value.slot_duration
+
+  if (timesChanged) {
+    confirmD.require({
+      message: 'Alle bestehenden Slots und Buchungen werden gelöscht. Fortfahren?',
+      header: 'Achtung',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Ja, speichern',
+      rejectLabel: 'Abbrechen',
+      accept: async () => {
+        await doSaveEvent(timesChanged) //true
+      },
+    })
+  } else {
+    await doSaveEvent(timesChanged) //false
   }
 }
 
@@ -296,10 +355,23 @@ async function deleteEvent(event) {
   await loadEvents()
 }
 
+async function saveAllTeachers() {
+  loading.value = true
+  try {
+    for (const teacher of eventTeachers.value) {
+      await updateTeacher(teacher)
+    }
+    showTeachersDialog.value = false
+  } finally {
+    loading.value = false
+  }
+}
 async function manageTeachers(event) {
   currentEventId.value = event.id
   const res = await fetch(`/api/events/${event.id}/teachers`)
-  eventTeachers.value = await res.json()
+  const data = await res.json()
+  eventTeachers.value = data.map((t) => ({ ...t, active: !!t.active }))
+  //überschreiben mit active true/false, damit Checkbox funktioniert, ohne dass die DB geändert werden muss
   showTeachersDialog.value = true
 }
 
@@ -312,6 +384,9 @@ async function updateTeacher(teacher) {
       time_end: teacher.time_end,
       active: teacher.active,
     }),
+  })
+  await fetch(`/api/slots/generate/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
+    method: 'POST',
   })
 }
 

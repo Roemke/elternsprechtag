@@ -32,6 +32,10 @@ app.use('/api/users', usersRouter);
 const eventsRouter = require('./routes/events');
 app.use('/api/events', eventsRouter);
 
+//routen für slots
+const slotsRouter = require('./routes/slots');
+app.use('/api/slots', slotsRouter);
+
 // WebSocket Verbindung
 io.on('connection', (socket) => {
     console.log('Client verbunden:', socket.id);

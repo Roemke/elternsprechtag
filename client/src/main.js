@@ -8,9 +8,10 @@ import Aura from '@primeuix/themes/aura'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import Tooltip from 'primevue/tooltip'
+import ConfirmationService from 'primevue/confirmationservice'
 
 const app = createApp(App)
-
+app.use(ConfirmationService)
 app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {

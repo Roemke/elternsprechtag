@@ -77,13 +77,37 @@ router.post("/", async (req, res) => {
 // Event bearbeiten
 router.put("/:id", async (req, res) => {
   try {
-    console.log("Event bearbeiten:", req.body);
-    const { name, date, time_start, time_end, slot_duration, active } =
-      req.body;
+    const {
+      name,
+      date,
+      time_start,
+      time_end,
+      slot_duration,
+      active,
+      timesChanged,
+    } = req.body;
     await db.query(
       "UPDATE events SET name = ?, date = ?, time_start = ?, time_end = ?, slot_duration = ?, active = ? WHERE id = ?",
       [name, date, time_start, time_end, slot_duration, active, req.params.id],
     );
+
+    // teacher_events Zeiten aktualisieren – aber nur wenn der Lehrer noch den Standard-Zeitrahmen hat
+    // d.h. wenn time_start und time_end des teacher_event mit dem alten Event-Zeitrahmen übereinstimmen
+    // Einfachste Lösung: alle teacher_events aktualisieren
+    if (timesChanged) {
+      await db.query(
+        "UPDATE teacher_events SET time_start = ?, time_end = ? WHERE event_id = ?",
+        [time_start, time_end, req.params.id],
+      );
+      // Alle Slots des Events löschen
+      const [teacherEvents] = await db.query(
+        "SELECT id FROM teacher_events WHERE event_id = ?",
+        [req.params.id],
+      );
+      for (const te of teacherEvents) {
+        await db.query("DELETE FROM slots WHERE teacher_event_id = ?", [te.id]);
+      }
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Fehler:", err.message);
