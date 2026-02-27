@@ -27,4 +27,25 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Schule aktualisieren
+router.put('/:id', async (req, res) => {
+  try {
+    const { name } = req.body
+    await db.query('UPDATE schools SET name = ? WHERE id = ?', [name, req.params.id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+//schule löschen
+router.delete('/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM schools WHERE id = ?', [req.params.id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 module.exports = router;
