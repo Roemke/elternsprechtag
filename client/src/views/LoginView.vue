@@ -1,30 +1,18 @@
 <template>
-  <div
-    style="
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f3f4f6;
-    "
-  >
-    <div style="width: 100%; max-width: 420px">
+  <div class="login-wrapper">
+    <div class="login-box">
       <div class="p-card p-4 shadow-3">
         <h2 class="text-center mb-5">🏫 Elternsprechtag</h2>
-
         <Message v-if="error" severity="error" class="mb-4">{{ error }}</Message>
-
         <div class="flex flex-column gap-3">
           <div class="flex flex-column gap-1">
             <label for="email">E-Mail</label>
             <InputText id="email" v-model="email" type="email" placeholder="name@schule.de" />
           </div>
-
           <div class="flex flex-column gap-1">
             <label for="password">Passwort</label>
             <Password id="password" v-model="password" :feedback="false" toggleMask fluid />
           </div>
-
           <Button
             label="Anmelden"
             icon="pi pi-sign-in"
@@ -66,12 +54,28 @@ async function login() {
       error.value = data.error
     } else {
       localStorage.setItem('user', JSON.stringify(data))
-      router.push('/admin')
+      router.push('/app')
     }
-  } catch (err) {
+  } catch (_err) {
     error.value = 'Server nicht erreichbar'
   } finally {
     loading.value = false
   }
 }
 </script>
+
+<style scoped>
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #f3f4f6;
+  padding: 2rem;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 420px;
+}
+</style>

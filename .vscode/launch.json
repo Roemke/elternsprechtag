@@ -4,15 +4,27 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Server starten",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
+            "name": "Express Server",
+            "skipFiles": [ "<node_internals>/**" ],
             "program": "${workspaceFolder}/server/index.js",
             "envFile": "${workspaceFolder}/server/.env",
             "restart": true,
             "runtimeExecutable": "nodemon",
             "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Vite Dev Server",
+            "program": "${workspaceFolder}/client/node_modules/.bin/vite",
+            "cwd": "${workspaceFolder}/client",
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Express + Vite",
+            "configurations": ["Express Server", "Vite Dev Server"]
         }
     ]
 }

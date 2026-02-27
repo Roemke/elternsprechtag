@@ -1,3 +1,3 @@
 <template>
-  <div>Lehrer</div>
+    <div>LehrerInnen</div>
 </template>
