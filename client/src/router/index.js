@@ -27,13 +27,11 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   if (to.path.startsWith('/app') && !user) {
-    next('/login')
-    return
+    return '/login'
   }
-  next()
 })
 
 export default router

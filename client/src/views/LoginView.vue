@@ -54,7 +54,14 @@ async function login() {
       error.value = data.error
     } else {
       localStorage.setItem('user', JSON.stringify(data))
-      router.push('/app')
+      //router.push('/app')
+      if (data.role === 'global_admin') {
+        router.push('/app/schools')
+      } else if (data.role === 'school_admin') {
+        router.push('/app/teachers')
+      } else {
+        router.push('/app/appointments')
+      }
     }
   } catch (_err) {
     error.value = 'Server nicht erreichbar'
