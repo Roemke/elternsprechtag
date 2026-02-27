@@ -13,15 +13,24 @@
       </div>
     </div>
 
-    <DataTable :value="teachers" stripedRows>
-      <Column field="name" header="Name" />
+    <DataTable :value="teachers" stripedRows sortMode="multiple">
+      <Column header="Name" sortable :sortField="sortName">
+        <template #body="{ data }"> {{ data.last_name }}, {{ data.first_name }} </template>
+      </Column>
       <Column field="email" header="E-Mail" />
-      <Column field="role" header="Rolle">
+      <Column field="role" header="Rolle" sortable :sortField="(data) => roleLabel(data.role)">
         <template #body="{ data }">
           {{ roleLabel(data.role) }}
         </template>
       </Column>
-      <Column header="Schule" v-if="user?.role === 'global_admin'">
+      <Column
+        header="Schule"
+        sortable
+        :sortField="(data) => schoolName(data.school_id)"
+        v-if="user?.role === 'global_admin'"
+      >
+        <!--
+      <Column header="Schule" v-if="user?.role === 'global_admin'"> -->
         <template #body="{ data }">
           {{ schoolName(data.school_id) }}
         </template>
@@ -54,8 +63,12 @@
           />
         </div>
         <div class="flex flex-column gap-1">
-          <label>Name</label>
-          <InputText v-model="form.name" placeholder="Vor- und Nachname" />
+          <label>Vorname</label>
+          <InputText v-model="form.first_name" placeholder="Vorname" />
+        </div>
+        <div class="flex flex-column gap-1">
+          <label>Nachname</label>
+          <InputText v-model="form.last_name" placeholder="Nachname" />
         </div>
         <div class="flex flex-column gap-1">
           <label>E-Mail</label>
@@ -89,8 +102,12 @@
           />
         </div>
         <div class="flex flex-column gap-1">
-          <label>Name</label>
-          <InputText v-model="editForm.name" />
+          <label>Vorname</label>
+          <InputText v-model="editForm.first_name" />
+        </div>
+        <div class="flex flex-column gap-1">
+          <label>Nachname</label>
+          <InputText v-model="editForm.last_name" />
         </div>
         <div class="flex flex-column gap-1">
           <label>E-Mail</label>
@@ -161,7 +178,8 @@
       style="width: 500px"
     >
       <DataTable :value="passwordList">
-        <Column field="name" header="Name" />
+        <Column field="last_name" header="Name" />
+        <Column field="first_name" header="Vorname" />
         <Column field="email" header="E-Mail" />
         <Column field="password" header="Passwort" />
       </DataTable>
@@ -199,7 +217,8 @@ const csvFile = ref(null)
 
 const form = ref({
   school_id: null,
-  name: '',
+  first_name: '',
+  last_name: '',
   email: '',
   role: 'teacher',
   sendEmail: false,
@@ -219,13 +238,18 @@ const roles = computed(() => {
 const showEditDialog = ref(false)
 const editForm = ref({
   id: null,
-  name: '',
+  first_name: '',
+  last_name: '',
   email: '',
   role: 'teacher',
   school_id: null,
   newPassword: '',
 })
 
+//some Helper functions
+function sortName(teacher) {
+  return `${teacher.last_name} ${teacher.first_name}`
+}
 function roleLabel(role) {
   //roles ist jetzt computed, daher value
   return roles.value.find((r) => r.value === role)?.label || role
@@ -252,7 +276,8 @@ async function loadSchools() {
 
 async function createTeacher() {
   const school_id = user?.role === 'global_admin' ? form.value.school_id : user.school_id
-  if (!form.value.name || !form.value.email || !form.value.school_id) return
+  if (!form.value.first_name || !form.value.last_name || !form.value.email || !form.value.school_id)
+    return
 
   loading.value = true
   try {
@@ -263,7 +288,14 @@ async function createTeacher() {
     })
     if (res.ok) {
       showDialog.value = false
-      form.value = { school_id: null, name: '', email: '', role: 'teacher', sendEmail: false }
+      form.value = {
+        school_id: null,
+        first_name: '',
+        last_name: '',
+        email: '',
+        role: 'teacher',
+        sendEmail: false,
+      }
       await loadTeachers()
     }
   } finally {
@@ -275,7 +307,8 @@ async function createTeacher() {
 function editTeacher(teacher) {
   editForm.value = {
     id: teacher.id,
-    name: teacher.name,
+    first_name: teacher.first_name,
+    last_name: teacher.last_name,
     email: teacher.email,
     role: teacher.role,
     school_id: teacher.school_id,
@@ -301,7 +334,7 @@ async function saveTeacher() {
 }
 
 async function deleteTeacher(teacher) {
-  if (!confirm(`Lehrer "${teacher.name}" wirklich löschen?`)) return
+  if (!confirm(`Lehrer "${teacher.first_name} ${teacher.last_name}" wirklich löschen?`)) return
   await fetch(`/api/users/${teacher.id}`, { method: 'DELETE' })
   await loadTeachers()
 }
@@ -337,8 +370,10 @@ async function importCsv() {
 
 function downloadPasswordList() {
   const csv =
-    'Name,Email,Passwort\n' +
-    passwordList.value.map((p) => `${p.name},${p.email},${p.password}`).join('\n')
+    'Name,Vorname,Email,Passwort\n' +
+    passwordList.value
+      .map((p) => `${p.last_name},${p.first_name},${p.email},${p.password}`)
+      .join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

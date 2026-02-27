@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('global_admin', 'school_admin', 'teacher') NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (school_id) REFERENCES schools(id)
 );
@@ -25,6 +26,8 @@ CREATE TABLE IF NOT EXISTS events (
     school_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
     date DATE NOT NULL,
+    time_start TIME NOT NULL DEFAULT '15:30:00',
+    time_end TIME NOT NULL DEFAULT '18:30:00',
     slot_duration INT NOT NULL DEFAULT 15,
     active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +41,7 @@ CREATE TABLE IF NOT EXISTS teacher_events (
     event_id INT NOT NULL,
     time_start TIME NOT NULL,
     time_end TIME NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT 1;
     FOREIGN KEY (teacher_id) REFERENCES users(id),
     FOREIGN KEY (event_id) REFERENCES events(id)
 );

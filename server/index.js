@@ -28,6 +28,10 @@ app.use('/api/schools', schoolsRouter);
 const usersRouter = require('./routes/users');
 app.use('/api/users', usersRouter);
 
+//routen für events
+const eventsRouter = require('./routes/events');
+app.use('/api/events', eventsRouter);
+
 // WebSocket Verbindung
 io.on('connection', (socket) => {
     console.log('Client verbunden:', socket.id);

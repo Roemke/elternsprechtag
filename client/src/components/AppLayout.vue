@@ -39,13 +39,19 @@ const menuItems = computed(() => {
 
   // Lehrer verwalten für global_admin und school_admin
   if (user?.role === 'global_admin' || user?.role === 'school_admin') {
-    items.push({
-      label: 'Lehrer',
-      icon: 'pi pi-users',
-      command: () => router.push('/app/teachers'),
-    })
+    items.push(
+      {
+        label: 'Lehrer',
+        icon: 'pi pi-users',
+        command: () => router.push('/app/teachers'),
+      },
+      {
+        label: 'Sprechtage',
+        icon: 'pi pi-calendar',
+        command: () => router.push('/app/events'),
+      },
+    )
   }
-
   // Termine immer sichtbar
   items.push({
     label: 'Meine Termine',
