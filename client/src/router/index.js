@@ -5,12 +5,14 @@ import SchoolsView from '../views/SchoolsView.vue'
 import TeachersView from '../views/TeachersView.vue'
 import AppointmentsView from '../views/AppointmentsView.vue'
 import EventsView from '../views/EventsView.vue'
+import BookingsView from '../views/BookingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: '/login' },
     { path: '/login', component: LoginView },
+    { path: '/booking', component: BookingsView },
     {
       path: '/app',
       component: AppView,
@@ -19,7 +21,7 @@ const router = createRouter({
         { path: 'teachers', component: TeachersView },
         { path: 'appointments', component: AppointmentsView },
         { path: 'events', component: EventsView },
-      ]
+      ],
       /*
       Der Router macht dann folgendes:
         Er sieht /app → lädt AppView.vue in den obersten RouterView in App.vue

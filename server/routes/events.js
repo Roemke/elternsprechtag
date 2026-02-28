@@ -2,9 +2,10 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db/database");
+const { authMiddleware, adminMiddleware, globalAdminMiddleware } = require('../middleware/auth')
 
-// Alle Events einer Schule
-router.get("/", async (req, res) => {
+// Alle Events abrufen
+router.get("/", globalAdminMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM events ORDER BY date DESC");
     res.json(rows);
@@ -14,7 +15,7 @@ router.get("/", async (req, res) => {
 });
 
 //events anhand der Schule
-router.get("/school/:school_id", async (req, res) => {
+router.get("/school/:school_id", authMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       "SELECT * FROM events WHERE school_id = ? ORDER BY date DESC",
@@ -27,7 +28,7 @@ router.get("/school/:school_id", async (req, res) => {
 });
 
 // Event anlegen + automatisch alle Lehrer zuweisen
-router.post("/", async (req, res) => {
+router.post("/", adminMiddleware, async (req, res) => {
   try {
     //console.log('Event anlegen:', req.body)
     const {
@@ -75,7 +76,7 @@ router.post("/", async (req, res) => {
 });
 
 // Event bearbeiten
-router.put("/:id", async (req, res) => {
+router.put("/:id", adminMiddleware, async (req, res) => {
   try {
     const {
       name,
@@ -116,7 +117,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Event löschen
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", adminMiddleware, async (req, res) => {
   try {
     const [teacherEvents] = await db.query(
       "SELECT id FROM teacher_events WHERE event_id = ?",
@@ -146,9 +147,10 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Lehrer-Zeitrahmen oder active Flag anpassen
-router.put("/:id/teacher/:teacher_id", async (req, res) => {
+router.put("/:id/teacher/:teacher_id", adminMiddleware, async (req, res) => {
   try {
     const { time_start, time_end, active } = req.body;
+    console.log('Event bearbeiten:', req.body)
     await db.query(
       "UPDATE teacher_events SET time_start = ?, time_end = ?, active = ? WHERE event_id = ? AND teacher_id = ?",
       [time_start, time_end, active, req.params.id, req.params.teacher_id],
@@ -159,8 +161,8 @@ router.put("/:id/teacher/:teacher_id", async (req, res) => {
   }
 });
 
-// Lehrer eines Events abrufen
-router.get("/:id/teachers", async (req, res) => {
+// Lehrer eines Events abrufen, für Eltern in bookings.js
+router.get("/:id/teachers", authMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT te.*, u.first_name, u.last_name 

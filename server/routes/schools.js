@@ -1,51 +1,70 @@
 // routes/schools.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const db = require('../db/database');
+const db = require("../db/database");
+const {
+  authMiddleware,
+  adminMiddleware,
+  globalAdminMiddleware,
+} = require("../middleware/auth");
 
 // Alle Schulen abrufen
-router.get('/', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM schools');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM schools");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+router.get('/active', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT DISTINCT s.* FROM schools s
+       JOIN events e ON e.school_id = s.id
+       WHERE e.active = 1`
+    )
+    res.json(rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // Schule anlegen
-router.post('/', async (req, res) => {
-    try {
-        const { name } = req.body;
-        const [result] = await db.query(
-            'INSERT INTO schools (name) VALUES (?)',
-            [name]
-        );
-        res.json({ id: result.insertId, name });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+router.post("/", adminMiddleware, async (req, res) => {
+  try {
+    const { name } = req.body;
+    const [result] = await db.query("INSERT INTO schools (name) VALUES (?)", [
+      name,
+    ]);
+    res.json({ id: result.insertId, name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Schule aktualisieren
-router.put('/:id', async (req, res) => {
+router.put("/:id", adminMiddleware, async (req, res) => {
   try {
-    const { name } = req.body
-    await db.query('UPDATE schools SET name = ? WHERE id = ?', [name, req.params.id])
-    res.json({ success: true })
+    const { name } = req.body;
+    await db.query("UPDATE schools SET name = ? WHERE id = ?", [
+      name,
+      req.params.id,
+    ]);
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 //schule löschen
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", globalAdminMiddleware, async (req, res) => {
   try {
-    await db.query('DELETE FROM schools WHERE id = ?', [req.params.id])
-    res.json({ success: true })
+    await db.query("DELETE FROM schools WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 module.exports = router;

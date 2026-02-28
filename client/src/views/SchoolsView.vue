@@ -61,6 +61,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import { authFetch } from '../utils/api.js'
 
 //ref: Vue-Syntax, damit die Variable reaktiv ist - aktualisierungen sofort in der UI sichtbar
 const schools = ref([])
@@ -73,7 +74,7 @@ const editSchoolName = ref('')
 const editSchoolId = ref(null)
 
 async function loadSchools() {
-  const res = await fetch('/api/schools')
+  const res = await authFetch('/api/schools')
   schools.value = await res.json()
 }
 
@@ -81,7 +82,7 @@ async function createSchool() {
   if (!newSchoolName.value.trim()) return
   loading.value = true
   try {
-    const res = await fetch('/api/schools', {
+    const res = await authFetch('/api/schools', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newSchoolName.value }),
@@ -106,7 +107,7 @@ function editSchool(school) {
 async function saveSchool() {
   loading.value = true
   try {
-    const res = await fetch(`/api/schools/${editSchoolId.value}`, {
+    const res = await authFetch(`/api/schools/${editSchoolId.value}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: editSchoolName.value }),
@@ -122,7 +123,7 @@ async function saveSchool() {
 
 async function deleteSchool(school) {
   if (!confirm(`Schule "${school.name}" wirklich löschen?`)) return
-  await fetch(`/api/schools/${school.id}`, { method: 'DELETE' })
+  await authFetch(`/api/schools/${school.id}`, { method: 'DELETE' })
   await loadSchools()
 }
 onMounted(loadSchools)

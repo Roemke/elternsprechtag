@@ -1,4 +1,5 @@
 // Elternsprechtag - (c) Roemke - MIT License
+require('dotenv').config()
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -33,8 +34,11 @@ const eventsRouter = require('./routes/events');
 app.use('/api/events', eventsRouter);
 
 //routen für slots
-const slotsRouter = require('./routes/slots');
+const { router: slotsRouter, generateSlots } = require('./routes/slots')
 app.use('/api/slots', slotsRouter);
+
+const bookingsRouter = require('./routes/bookings');
+app.use('/api/bookings', bookingsRouter);
 
 // WebSocket Verbindung
 io.on('connection', (socket) => {

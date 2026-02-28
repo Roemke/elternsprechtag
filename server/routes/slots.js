@@ -2,16 +2,20 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../db/database')
+const { authMiddleware, adminMiddleware, globalAdminMiddleware } = require('../middleware/auth')
+
 
 // Slots für einen teacher_event generieren
 async function generateSlots(teacher_event_id, time_start, time_end, slot_duration) {
+  
+  console.log('generateSlots:', teacher_event_id, time_start, time_end, slot_duration)
   // Bestehende Slots löschen
   await db.query('DELETE FROM slots WHERE teacher_event_id = ?', [teacher_event_id])
 
   const slots = []
   const [startHour, startMin] = time_start.split(':').map(Number)
   const [endHour, endMin] = time_end.split(':').map(Number)
-
+  console.log('start:', startHour, startMin, 'end:', endHour, endMin)
   let current = startHour * 60 + startMin
   const end = endHour * 60 + endMin
 
@@ -33,7 +37,7 @@ async function generateSlots(teacher_event_id, time_start, time_end, slot_durati
 }
 
 // Slots für ein ganzes Event generieren
-router.post('/generate/:event_id', async (req, res) => {
+router.post('/generate/:event_id', adminMiddleware, async (req, res) => {
   try {
     const [teacherEvents] = await db.query(
       'SELECT te.*, e.slot_duration FROM teacher_events te JOIN events e ON te.event_id = e.id WHERE te.event_id = ?',
@@ -53,7 +57,7 @@ router.post('/generate/:event_id', async (req, res) => {
 })
 
 // Slots für einen einzelnen Lehrer neu generieren
-router.post('/generate/:event_id/teacher/:teacher_id', async (req, res) => {
+router.post('/generate/:event_id/teacher/:teacher_id', adminMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT te.*, e.slot_duration FROM teacher_events te JOIN events e ON te.event_id = e.id WHERE te.event_id = ? AND te.teacher_id = ?',
@@ -70,7 +74,7 @@ router.post('/generate/:event_id/teacher/:teacher_id', async (req, res) => {
   }
 })
 
-// Slots eines Lehrers für ein Event abrufen
+// Slots eines Lehrers für ein Event abrufen - keine Middleware, wird auch von Eltern aufgerufen
 router.get('/:event_id/teacher/:teacher_id', async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -88,4 +92,4 @@ router.get('/:event_id/teacher/:teacher_id', async (req, res) => {
   }
 })
 
-module.exports = router
+module.exports = {router, generateSlots}

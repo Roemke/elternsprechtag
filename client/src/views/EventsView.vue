@@ -198,6 +198,7 @@ import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import ConfirmDialog from 'primevue/confirmdialog'
+import { authFetch } from '../utils/api.js'
 
 const confirmD = useConfirm()
 
@@ -238,7 +239,7 @@ function schoolName(school_id) {
 
 async function loadEvents() {
   const url = user?.role === 'global_admin' ? '/api/events' : `/api/events/school/${user.school_id}`
-  const res = await fetch(url)
+  const res = await authFetch(url)
   //console.log('Status:', res.status)
   //const text = await res.text()
   //console.log('Response:', text)
@@ -246,7 +247,7 @@ async function loadEvents() {
 }
 
 async function loadSchools() {
-  const res = await fetch('/api/schools')
+  const res = await authFetch('/api/schools')
   schools.value = await res.json()
 }
 
@@ -255,7 +256,7 @@ async function createEvent() {
   if (!form.value.name || !form.value.date || !school_id) return
   loading.value = true
   try {
-    const res = await fetch('/api/events', {
+    const res = await authFetch('/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -275,7 +276,7 @@ async function createEvent() {
         slot_duration: 15,
       }
       const eventData = await res.json()
-      await fetch(`/api/slots/generate/${eventData.id}`, { method: 'POST' })
+      await authFetch(`/api/slots/generate/${eventData.id}`, { method: 'POST' })
       await loadEvents()
     }
   } finally {
@@ -306,7 +307,7 @@ function editEvent(event) {
 async function doSaveEvent(timesChanged) {
   loading.value = true
   try {
-    const res = await fetch(`/api/events/${editForm.value.id}`, {
+    const res = await authFetch(`/api/events/${editForm.value.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -318,7 +319,7 @@ async function doSaveEvent(timesChanged) {
       }),
     })
     if (res.ok) {
-      await fetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
+      await authFetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
       showEditDialog.value = false
       await loadEvents()
     }
@@ -351,7 +352,7 @@ async function saveEvent() {
 
 async function deleteEvent(event) {
   if (!confirm(`Sprechtag "${event.name}" wirklich löschen?`)) return
-  await fetch(`/api/events/${event.id}`, { method: 'DELETE' })
+  await authFetch(`/api/events/${event.id}`, { method: 'DELETE' })
   await loadEvents()
 }
 
@@ -368,7 +369,7 @@ async function saveAllTeachers() {
 }
 async function manageTeachers(event) {
   currentEventId.value = event.id
-  const res = await fetch(`/api/events/${event.id}/teachers`)
+  const res = await authFetch(`/api/events/${event.id}/teachers`)
   const data = await res.json()
   eventTeachers.value = data.map((t) => ({ ...t, active: !!t.active }))
   //überschreiben mit active true/false, damit Checkbox funktioniert, ohne dass die DB geändert werden muss
@@ -376,7 +377,7 @@ async function manageTeachers(event) {
 }
 
 async function updateTeacher(teacher) {
-  await fetch(`/api/events/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
+  await authFetch(`/api/events/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -385,7 +386,7 @@ async function updateTeacher(teacher) {
       active: teacher.active,
     }),
   })
-  await fetch(`/api/slots/generate/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
+  await authFetch(`/api/slots/generate/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
     method: 'POST',
   })
 }

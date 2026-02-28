@@ -202,6 +202,7 @@ import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
 import FileUpload from 'primevue/fileupload'
 import Password from 'primevue/password'
+import { authFetch } from '../utils/api.js'
 
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const teachers = ref([])
@@ -261,16 +262,16 @@ function schoolName(school_id) {
 
 async function loadTeachers() {
   if (user?.role === 'global_admin') {
-    const res = await fetch('/api/users/all')
+    const res = await authFetch('/api/users/all')
     teachers.value = await res.json()
   } else {
-    const res = await fetch(`/api/users/school/${user.school_id}`)
+    const res = await authFetch(`/api/users/school/${user.school_id}`)
     teachers.value = await res.json()
   }
 }
 
 async function loadSchools() {
-  const res = await fetch('/api/schools')
+  const res = await authFetch('/api/schools')
   schools.value = await res.json()
 }
 
@@ -281,7 +282,7 @@ async function createTeacher() {
 
   loading.value = true
   try {
-    const res = await fetch('/api/users', {
+    const res = await authFetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form.value, school_id }),
@@ -319,7 +320,7 @@ function editTeacher(teacher) {
 async function saveTeacher() {
   loading.value = true
   try {
-    const res = await fetch(`/api/users/${editForm.value.id}`, {
+    const res = await authFetch(`/api/users/${editForm.value.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editForm.value),
@@ -335,7 +336,7 @@ async function saveTeacher() {
 
 async function deleteTeacher(teacher) {
   if (!confirm(`Lehrer "${teacher.first_name} ${teacher.last_name}" wirklich löschen?`)) return
-  await fetch(`/api/users/${teacher.id}`, { method: 'DELETE' })
+  await authFetch(`/api/users/${teacher.id}`, { method: 'DELETE' })
   await loadTeachers()
 }
 
@@ -352,7 +353,7 @@ async function importCsv() {
     formData.append('file', csvFile.value)
     formData.append('school_id', school_id)
     formData.append('sendEmail', csvSendEmail.value)
-    const res = await fetch('/api/users/import', {
+    const res = await authFetch('/api/users/import', {
       method: 'POST',
       body: formData,
     })

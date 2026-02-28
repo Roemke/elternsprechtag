@@ -6,12 +6,19 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const { parse } = require("csv-parse/sync");
 const upload = multer({ storage: multer.memoryStorage() });
+const jwt = require("jsonwebtoken");
+const {
+  authMiddleware,
+  adminMiddleware,
+  globalAdminMiddleware,
+} = require("../middleware/auth");
+const { generateSlots } = require('./slots')
 
 // Alle Lehrer einer Schule abrufen
-router.get("/school/:school_id", async (req, res) => {
+router.get("/school/:school_id", authMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, first_name, last_name email, role FROM users WHERE school_id = ?",
+      "SELECT id, first_name, last_name, email, role FROM users WHERE school_id = ?",
       [req.params.school_id],
     );
     res.json(rows);
@@ -21,7 +28,7 @@ router.get("/school/:school_id", async (req, res) => {
 });
 
 // Lehrer anlegen (durch Schuladmin)
-router.post("/", async (req, res) => {
+router.post("/", adminMiddleware, async (req, res) => {
   try {
     const { school_id, first_name, last_name, email, role } = req.body;
 
@@ -36,10 +43,24 @@ router.post("/", async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     const [result] = await db.query(
-      "INSERT INTO users (school_id, first_name,last_name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO users (school_id, first_name,last_name, email, password_hash, role) VALUES (?, ?, ?, ?, ?, ?) ",
       [school_id, first_name, last_name, email, password_hash, role],
     );
 
+    // Lehrer zu aktiven Events der Schule hinzufügen
+    const [activeEvents] = await db.query(
+      'SELECT id, time_start, time_end, slot_duration FROM events WHERE school_id = ? AND active = 1',
+      [school_id]
+    )
+    for (const event of activeEvents) {
+      await db.query(
+        'INSERT INTO teacher_events (teacher_id, event_id, time_start, time_end, active) VALUES (?, ?, ?, ?, 1)',
+        [result.insertId, event.id, event.time_start, event.time_end]
+      )
+      const count = await generateSlots(result.insertId, event.time_start, event.time_end, event.slot_duration)
+      console.log(`Slots für Lehrer ${first_name} ${last_name} und Event ${event.id} generiert: ${count}`)
+    }
+    
     // Passwort im Klartext zurückgeben damit es per Email verschickt werden kann
     res.json({
       id: result.insertId,
@@ -49,7 +70,8 @@ router.post("/", async (req, res) => {
       role,
       password,
     });
-  } catch (err) {
+  } catch (err) {    
+    console.error('Fehler:', err.message)
     res.status(500).json({ error: err.message });
   }
 });
@@ -76,14 +98,20 @@ router.post("/login", async (req, res) => {
 
     // Passwort nicht zurückgeben
     delete user.password_hash;
-    res.json(user);
+    // JWT Token generieren
+    const token = jwt.sign(
+      { id: user.id, role: user.role, school_id: user.school_id },
+      process.env.JWT_SECRET,
+      { expiresIn: "8h" },
+    );
+    res.json({ ...user, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Passwort ändern
-router.put("/:id/password", async (req, res) => {
+router.put("/:id/password", authMiddleware, async (req, res) => {
   try {
     const { password } = req.body;
     const password_hash = await bcrypt.hash(password, 10);
@@ -100,7 +128,7 @@ router.put("/:id/password", async (req, res) => {
 });
 
 // Alle User für globalen Admin
-router.get("/all", async (req, res) => {
+router.get("/all", globalAdminMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       "SELECT id, school_id, first_name, last_name, email, role FROM users",
@@ -112,16 +140,26 @@ router.get("/all", async (req, res) => {
 });
 
 // User löschen
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    await db.query("DELETE FROM users WHERE id = ?", [req.params.id]);
-    res.json({ success: true });
+    // teacher_events des Users holen
+    const [teacherEvents] = await db.query(
+      'SELECT id FROM teacher_events WHERE teacher_id = ?', [req.params.id]
+    )
+    for (const te of teacherEvents) {
+      await db.query('DELETE FROM bookings WHERE slot_id IN (SELECT id FROM slots WHERE teacher_event_id = ?)', [te.id])
+      await db.query('DELETE FROM slots WHERE teacher_event_id = ?', [te.id])
+    }
+    await db.query('DELETE FROM teacher_events WHERE teacher_id = ?', [req.params.id])
+    await db.query('DELETE FROM users WHERE id = ?', [req.params.id])
+    res.json({ success: true })
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-});
+})
 
-router.put("/:id", async (req, res) => {
+// User aktualisieren
+router.put("/:id", adminMiddleware, async (req, res) => {
   try {
     const { first_name, last_name, email, role, school_id, newPassword } =
       req.body;
@@ -151,44 +189,66 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.post("/import", upload.single("file"), async (req, res) => {
-  try {
-    const school_id = req.body.school_id;
-    const sendEmail = req.body.sendEmail === "true";
+router.post(
+  "/import",
+  adminMiddleware,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const school_id = req.body.school_id;
+      const sendEmail = req.body.sendEmail === "true";
 
-    const records = parse(req.file.buffer, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      delimiter: [",", ";"],
-    });
+      const records = parse(req.file.buffer, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        delimiter: [",", ";"],
+      });
 
-    const passwords = [];
+      const passwords = [];
 
-    for (const record of records) {
-      const { name, vorname, email, rolle } = record;
+      for (const record of records) {
+        const { name, vorname, email, rolle } = record;
 
-      // Schulname für Passwort holen
-      const [schoolRows] = await db.query(
-        "SELECT name FROM schools WHERE id = ?",
-        [school_id],
-      );
-      const schoolName = schoolRows[0]?.name.replace(/\s+/g, "-");
-      const year = new Date().getFullYear();
-      const password = `${schoolName}-${year}`;
-      const password_hash = await bcrypt.hash(password, 10);
+        // Schulname für Passwort holen
+        const [schoolRows] = await db.query(
+          "SELECT name FROM schools WHERE id = ?",
+          [school_id],
+        );
+        const schoolName = schoolRows[0]?.name.replace(/\s+/g, "-");
+        const year = new Date().getFullYear();
+        const password = `${schoolName}-${year}`;
+        const password_hash = await bcrypt.hash(password, 10);
 
-      await db.query(
-        "INSERT INTO users (school_id, first_name,last_name, email, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)",
-        [school_id, vorname, name, email, password_hash, rolle || "teacher"],
-      );
+        await db.query(
+          "INSERT INTO users (school_id, first_name,last_name, email, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)",
+          [school_id, vorname, name, email, password_hash, rolle || "teacher"],
+        );
 
-      passwords.push({ last_name: name, first_name: vorname, email, password });
+        passwords.push({
+          last_name: name,
+          first_name: vorname,
+          email,
+          password,
+        });
+        // Lehrer zu aktiven Events der Schule hinzufügen
+        const [activeEvents] = await db.query(
+          'SELECT id, time_start, time_end , slot_durationFROM events WHERE school_id = ? AND active = 1',
+          [school_id]
+        )
+        for (const event of activeEvents) {
+          await db.query(
+            'INSERT INTO teacher_events (teacher_id, event_id, time_start, time_end, active) VALUES (?, ?, ?, ?, 1)',
+            [result.insertId, event.id, event.time_start, event.time_end]
+          )
+          await generateSlots(result.insertId, event.time_start, event.time_end, event.slot_duration)
+        }
+      }
+
+      res.json({ success: true, passwords });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    res.json({ success: true, passwords });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  },
+);
 module.exports = router;
