@@ -136,13 +136,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Message from 'primevue/message'
+import socket from '../utils/socket.js'
 
 // Cookie-ID generieren oder aus Cookie lesen
 function getCookieId() {
@@ -183,6 +184,8 @@ const loading = ref(false)              // true während API-Calls laufen
 const multipleSchools = ref(false)      // true wenn mehr als eine Schule aktiv
 const multipleEvents = ref(false)       // true wenn mehr als ein aktiver Sprechtag vorhanden (alle Schulen)
 
+const previousEventId = ref(null)       // vorheriger Event für Socket-Room-Wechsel
+
 async function loadSchools() {
   const res = await fetch('/api/schools/active')
   schools.value = await res.json()
@@ -219,6 +222,7 @@ async function onSchoolChange() {
 }
 
 async function onEventChange() {
+  // alten Room verlassen
   selectedTeacher.value = null
   selectedSlot.value = null
   teachers.value = []
@@ -331,10 +335,38 @@ function startNewBooking() {
   step.value = 3
 }
 
+//änderungen für socket.io
+
+watch(selectedEvent, (newVal, oldVal) => {
+  if (oldVal) socket.emit('leave-event', oldVal.id)
+  if (newVal) socket.emit('join-event', newVal.id)
+})
 onMounted(async () => {
+  socket.connect()
+
+  socket.on('slot-booked', ({ slot_id }) => {
+    // Slot als gebucht markieren
+    const slot = slots.value.find(s => s.id === slot_id)
+    if (slot) slot.booked = true
+  })
+
+  socket.on('slot-cancelled', ({ slot_id }) => {
+    // Slot als frei markieren
+    const slot = slots.value.find(s => s.id === slot_id)
+    if (slot) slot.booked = false
+  })
+
   await loadSchools()
   await loadMyBookings()
 })
+
+onUnmounted(() => {
+  if (selectedEvent.value) {
+    socket.emit('leave-event', selectedEvent.value.id)
+  }
+  socket.disconnect()
+})
+
 </script>
 
 <style scoped>
