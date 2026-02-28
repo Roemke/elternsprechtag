@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('global_admin', 'school_admin', 'teacher') NOT NULL,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,    
+    auth_method VARCHAR(20) NOT NULL DEFAULT 'internal',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (school_id) REFERENCES schools(id)
 );

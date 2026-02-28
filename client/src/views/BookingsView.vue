@@ -2,14 +2,23 @@
   <div class="booking-wrapper">
     <div class="booking-container">
       <h2 class="text-center mb-4">🏫 Elternsprechtag – Terminbuchung</h2>
-
+      <div class="p-card p-4 mb-3" v-if="!selectedEvent && events.length === 0 && !loading">
+        <Message severity="info">
+          Aktuell sind leider keine Sprechtage zur Buchung verfügbar. Bitte schauen Sie später
+          wieder vorbei.
+        </Message>
+      </div>
       <!-- Info über gewählten Sprechtag -->
-      <div class="p-card p-4 mb-3 flex align-items-center justify-content-between" v-if="selectedEvent">
+      <div
+        class="p-card p-4 mb-3 flex align-items-center justify-content-between"
+        v-if="selectedEvent"
+      >
         <span>
           <span class="font-bold">{{ selectedSchool?.name }}</span> – {{ selectedEvent?.name }} –
-            {{ new Date(selectedEvent.date).toLocaleDateString('de-DE') }}
+          {{ new Date(selectedEvent.date).toLocaleDateString('de-DE') }}
         </span>
-        <Button v-if="multipleEvents && phase === 'booked'"
+        <Button
+          v-if="multipleEvents"
           label="Sprechtag wechseln"
           severity="secondary"
           @click="switchEvent"
@@ -19,7 +28,7 @@
       <div v-if="phase === 'select'">
         <!-- Schritt 1: Schule wählen -->
         <!-- Schritt 1: Schule wählen - nur wenn mehrere Schulen -->
-        <div class="p-card p-4 mb-3" v-if="step===1 &&multipleSchools && !selectedSchool">
+        <div class="p-card p-4 mb-3" v-if="step === 1 && multipleSchools && !selectedSchool">
           <h3>Schule wählen</h3>
           <Select
             v-model="selectedSchool"
@@ -39,7 +48,12 @@
             :options="events"
             optionLabel="name"
             placeholder="Sprechtag wählen"
-            @change="onEventChange"
+            @change="
+              async () => {
+                await onEventChange()
+                await loadMyBookings()
+              }
+            "
             class="w-full"
           >
             <template #option="{ option }">
@@ -95,7 +109,10 @@
       </div>
 
       <!-- Meine Termine - immer sichtbar wenn vorhanden -->
-      <div class="p-card p-4 mt-3" v-if="(myBookings.length > 0 || phase === 'booked') && selectedEvent">
+      <div
+        class="p-card p-4 mt-3"
+        v-if="(myBookings.length > 0 || phase === 'booked') && selectedEvent"
+      >
         <h3>Meine gebuchten Termine</h3>
         <p v-if="myBookings.length === 0">Keine Termine vorhanden.</p>
         <DataTable :value="myBookings" stripedRows>
@@ -125,6 +142,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Message from 'primevue/message'
 
 // Cookie-ID generieren oder aus Cookie lesen
 function getCookieId() {
@@ -136,24 +154,34 @@ function getCookieId() {
   return id
 }
 
-const cookieId = getCookieId()
-const step = ref(1)
-const phase = ref('select') // 'select' oder 'booked'
-const schools = ref([])
-const events = ref([])
-const teachers = ref([])
-const slots = ref([])
-const myBookings = ref([])
-const selectedSchool = ref(null)
-const selectedEvent = ref(null)
-const selectedTeacher = ref(null)
-const selectedSlot = ref(null)
-const parentName = ref(localStorage.getItem('parent_name') || '')
-const childName = ref(localStorage.getItem('child_name') || '')
-const loading = ref(false)
-const booking = ref(null)
-const multipleSchools = ref(false)
-const multipleEvents = ref(false)
+// Identifikation des Nutzers ohne Login
+const cookieId = getCookieId()          // eindeutige ID aus Browser-Cookie, identifiziert den Elternteil
+
+// Ablaufsteuerung
+const step = ref(1)                     // 1=Schule, 2=Sprechtag, 3=Lehrer, 4=Slot+Formular
+const phase = ref('select')             // 'select'=Auswahlmodus, 'booked'=nach Buchung
+
+// Geladene Stammdaten
+const schools = ref([])                 // alle Schulen mit aktiven Sprechtagen
+const events = ref([])                  // alle aktiven Sprechtage (aller Schulen)
+const teachers = ref([])                // Lehrer des gewählten Sprechtags
+const slots = ref([])                   // Slots des gewählten Lehrers (mit booked-Flag)
+const myBookings = ref([])              // gebuchte Termine des aktuellen Nutzers (gefiltert nach Event)
+
+// Aktuelle Auswahl
+const selectedSchool = ref(null)        // gewählte Schule
+const selectedEvent = ref(null)         // gewählter Sprechtag
+const selectedTeacher = ref(null)       // gewählter Lehrer
+const selectedSlot = ref(null)          // gewählter Slot (noch nicht gebucht)
+
+// Formulardaten
+const parentName = ref(localStorage.getItem('parent_name') || '')  // Name des Elternteils (aus localStorage vorbelegt)
+const childName = ref(localStorage.getItem('child_name') || '')    // Name des Kindes (aus localStorage vorbelegt)
+
+// Hilfsvariablen
+const loading = ref(false)              // true während API-Calls laufen
+const multipleSchools = ref(false)      // true wenn mehr als eine Schule aktiv
+const multipleEvents = ref(false)       // true wenn mehr als ein aktiver Sprechtag vorhanden (alle Schulen)
 
 async function loadSchools() {
   const res = await fetch('/api/schools/active')
@@ -180,11 +208,11 @@ async function loadSchools() {
 async function onSchoolChange() {
   const res = await fetch(`/api/bookings/school/${selectedSchool.value.id}/events`)
   events.value = await res.json()
-  multipleEvents.value = events.value.length > 1
   console.log('events:', events.value.length, 'multipleEvents:', multipleEvents.value)
   if (events.value.length === 1) {
     selectedEvent.value = events.value[0]
     await onEventChange()
+    await loadMyBookings()
   } else {
     step.value = 2
   }
@@ -196,10 +224,12 @@ async function onEventChange() {
   teachers.value = []
   slots.value = []
   if (!selectedEvent.value) return
+  // Schule zum Event setzen
+  const school = schools.value.find((s) => s.id === selectedEvent.value.school_id)
+  if (school) selectedSchool.value = school
   const res = await fetch(`/api/bookings/event/${selectedEvent.value.id}/teachers`)
   teachers.value = await res.json()
   step.value = 3
-  await loadMyBookings()
 }
 
 async function onTeacherSelect(teacher) {
@@ -227,7 +257,6 @@ async function bookSlot() {
     })
     const data = await res.json()
     if (res.ok) {
-      booking.value = { ...selectedSlot.value }
       localStorage.setItem('parent_name', parentName.value)
       localStorage.setItem('child_name', childName.value)
       phase.value = 'booked'
@@ -245,24 +274,23 @@ async function loadMyBookings() {
   const all = await res.json()
 
   if (all.length > 0 && !selectedEvent.value) {
-  // letztes event nehmen das noch aktiv ist
-    const activeBooking = [...all].reverse().find(b =>
-      events.value.some(e => e.id === b.event_id)
-    )
+    // letztes event nehmen das noch aktiv ist
+    const activeBooking = [...all]
+      .reverse()
+      .find((b) => events.value.some((e) => e.id === b.event_id))
     if (activeBooking) {
-      const event = events.value.find(e => e.id === activeBooking.event_id)
+      const event = events.value.find((e) => e.id === activeBooking.event_id)
       if (event) {
         selectedEvent.value = event
         console.log('event.school_id:', event.school_id)
         console.log('schools.value:', schools.value)
-        const school = schools.value.find(s => s.id === event.school_id)
-          console.log('school gefunden:', school)
+        const school = schools.value.find((s) => s.id === event.school_id)
+        console.log('school gefunden:', school)
         if (school) selectedSchool.value = school
         await onEventChange()
       }
     }
   }
-
 
   myBookings.value = selectedEvent.value
     ? all.filter((b) => b.event_id === selectedEvent.value.id)
@@ -289,6 +317,12 @@ async function switchEvent() {
   }
 }
 
+async function cancelBooking(b) {
+  if (!confirm('Termin wirklich löschen?')) return
+  await fetch(`/api/bookings/${b.slot_id}/cookie/${cookieId}`, { method: 'DELETE' })
+  await loadMyBookings()
+}
+
 function startNewBooking() {
   selectedTeacher.value = null
   selectedSlot.value = null
@@ -296,7 +330,6 @@ function startNewBooking() {
   phase.value = 'select'
   step.value = 3
 }
-
 
 onMounted(async () => {
   await loadSchools()

@@ -319,7 +319,9 @@ async function doSaveEvent(timesChanged) {
       }),
     })
     if (res.ok) {
-      await authFetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
+      if (timesChanged) {
+        await authFetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
+      }
       showEditDialog.value = false
       await loadEvents()
     }

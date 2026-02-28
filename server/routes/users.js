@@ -113,6 +113,11 @@ router.post("/login", async (req, res) => {
 // Passwort ändern
 router.put("/:id/password", authMiddleware, async (req, res) => {
   try {
+    if (req.user.id !== parseInt(req.params.id) &&
+        req.user.role !== 'global_admin' &&
+        req.user.role !== 'school_admin') {
+      return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
     const { password } = req.body;
     const password_hash = await bcrypt.hash(password, 10);
 
@@ -139,8 +144,26 @@ router.get("/all", globalAdminMiddleware, async (req, res) => {
   }
 });
 
+// Teacher Events eines Lehrers abrufen
+router.get('/:id/teacherevents', authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT te.id, te.event_id, te.time_start, te.time_end, te.active,
+        e.name as event_name, e.date
+       FROM teacher_events te
+       JOIN events e ON te.event_id = e.id
+       WHERE te.teacher_id = ?
+       ORDER BY e.date DESC`,
+      [req.params.id]
+    )
+    res.json(rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // User löschen
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminMiddleware, async (req, res) => {
   try {
     // teacher_events des Users holen
     const [teacherEvents] = await db.query(
@@ -166,21 +189,13 @@ router.put("/:id", adminMiddleware, async (req, res) => {
     if (newPassword) {
       const password_hash = await bcrypt.hash(newPassword, 10);
       await db.query(
-        "UPDATE users SET first_name = ?, last_name = ?, email = ?, role = ?, school_id = ?, password_hash = ? WHERE id = ?",
-        [
-          first_name,
-          last_name,
-          email,
-          role,
-          school_id,
-          password_hash,
-          req.params.id,
-        ],
-      );
+        'UPDATE users SET first_name = ?, last_name = ?, email = ?, role = ?, school_id = ?, password_hash = ?, auth_method = ? WHERE id = ?',
+        [first_name, last_name, email, role, school_id, password_hash, auth_method || 'internal', req.params.id]
+      );        
     } else {
       await db.query(
-        "UPDATE users SET first_name = ?, last_name = ?, email = ?, role = ?, school_id = ? WHERE id = ?",
-        [first_name, last_name, email, role, school_id, req.params.id],
+        'UPDATE users SET first_name = ?, last_name = ?, email = ?, role = ?, school_id = ?, auth_method = ? WHERE id = ?',
+        [first_name, last_name, email, role, school_id, auth_method || 'internal', req.params.id]
       );
     }
     res.json({ success: true });
@@ -188,6 +203,24 @@ router.put("/:id", adminMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+//profil bearbeiten (nur sich selbst, auch Lehrer)
+router.put('/:id/profile', authMiddleware, async (req, res) => {
+  try {
+    // nur sich selbst bearbeiten
+    if (req.user.id !== parseInt(req.params.id)) {
+      return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
+    const { first_name, last_name, auth_method } = req.body
+    await db.query(
+      'UPDATE users SET first_name = ?, last_name = ?, auth_method = ? WHERE id = ?',
+      [first_name, last_name, auth_method || 'internal', req.params.id]
+    )
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 router.post(
   "/import",

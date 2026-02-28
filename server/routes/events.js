@@ -87,6 +87,8 @@ router.put("/:id", adminMiddleware, async (req, res) => {
       active,
       timesChanged,
     } = req.body;
+    console.log('teacher update:', req.body)
+    console.log('timesChanged:', timesChanged, 'active:', active)
     await db.query(
       "UPDATE events SET name = ?, date = ?, time_start = ?, time_end = ?, slot_duration = ?, active = ? WHERE id = ?",
       [name, date, time_start, time_end, slot_duration, active, req.params.id],
@@ -147,8 +149,14 @@ router.delete("/:id", adminMiddleware, async (req, res) => {
 });
 
 // Lehrer-Zeitrahmen oder active Flag anpassen
-router.put("/:id/teacher/:teacher_id", adminMiddleware, async (req, res) => {
+router.put("/:id/teacher/:teacher_id", authMiddleware, async (req, res) => {
   try {
+    // Lehrer darf nur seine eigenen Zeiten ändern, Admins alles
+    if (req.user.id !== parseInt(req.params.teacher_id) &&
+        req.user.role !== 'global_admin' &&
+        req.user.role !== 'school_admin') {
+      return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
     const { time_start, time_end, active } = req.body;
     console.log('Event bearbeiten:', req.body)
     await db.query(

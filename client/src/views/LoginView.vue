@@ -7,11 +7,11 @@
         <div class="flex flex-column gap-3">
           <div class="flex flex-column gap-1">
             <label for="email">E-Mail</label>
-            <InputText id="email" v-model="email" type="email" placeholder="name@schule.de" />
+            <InputText id="email" v-model="email" type="email" placeholder="name@schule.de" @keyup.enter="login"/>
           </div>
           <div class="flex flex-column gap-1">
             <label for="password">Passwort</label>
-            <Password id="password" v-model="password" :feedback="false" toggleMask fluid />
+            <Password id="password" v-model="password" :feedback="false" toggleMask fluid @keyup.enter="login"/>
           </div>
           <Button
             label="Anmelden"

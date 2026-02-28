@@ -54,11 +54,15 @@ const menuItems = computed(() => {
   }
   // Termine immer sichtbar
   items.push({
-    label: 'Meine Termine',
+    label: 'Termine verwalten',
     icon: 'pi pi-calendar',
     command: () => router.push('/app/appointments'),
   })
-
+  items.push({
+    label: 'Profil',
+    icon: 'pi pi-user',
+    command: () => router.push('/app/profile'),
+  })
   return items
 })
 

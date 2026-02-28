@@ -78,10 +78,11 @@
           <label>Rolle</label>
           <Select v-model="form.role" :options="roles" optionLabel="label" optionValue="value" />
         </div>
+        <!-- mal angedacht, heraus
         <div class="flex align-items-center gap-2">
           <Checkbox v-model="form.sendEmail" :binary="true" inputId="sendEmail" />
           <label for="sendEmail">Passwort per Email senden</label>
-        </div>
+        </div> -->
       </div>
       <template #footer>
         <Button label="Abbrechen" severity="secondary" @click="showDialog = false" />
@@ -159,10 +160,11 @@
             chooseLabel="CSV wählen"
           />
         </div>
+        <!-- mal angedacht, heraus
         <div class="flex align-items-center gap-2">
           <Checkbox v-model="csvSendEmail" :binary="true" inputId="csvSendEmail" />
           <label for="csvSendEmail">Passwörter per Email senden</label>
-        </div>
+        </div>-->
       </div>
       <template #footer>
         <Button label="Abbrechen" severity="secondary" @click="showCsvDialog = false" />
@@ -199,7 +201,6 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import Checkbox from 'primevue/checkbox'
 import FileUpload from 'primevue/fileupload'
 import Password from 'primevue/password'
 import { authFetch } from '../utils/api.js'
@@ -222,7 +223,7 @@ const form = ref({
   last_name: '',
   email: '',
   role: 'teacher',
-  sendEmail: false,
+  sendEmail: false, //werde ich herausnehmen denke ich
 })
 
 const roles = computed(() => {

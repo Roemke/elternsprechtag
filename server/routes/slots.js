@@ -10,7 +10,9 @@ async function generateSlots(teacher_event_id, time_start, time_end, slot_durati
   
   console.log('generateSlots:', teacher_event_id, time_start, time_end, slot_duration)
   // Bestehende Slots löschen
+  await db.query('DELETE FROM bookings WHERE slot_id IN (SELECT id FROM slots WHERE teacher_event_id = ?)', [teacher_event_id])
   await db.query('DELETE FROM slots WHERE teacher_event_id = ?', [teacher_event_id])
+  
 
   const slots = []
   const [startHour, startMin] = time_start.split(':').map(Number)
@@ -57,8 +59,13 @@ router.post('/generate/:event_id', adminMiddleware, async (req, res) => {
 })
 
 // Slots für einen einzelnen Lehrer neu generieren
-router.post('/generate/:event_id/teacher/:teacher_id', adminMiddleware, async (req, res) => {
+router.post('/generate/:event_id/teacher/:teacher_id', authMiddleware, async (req, res) => {
   try {
+     if (req.user.id !== parseInt(req.params.teacher_id) &&
+        req.user.role !== 'global_admin' &&
+        req.user.role !== 'school_admin') {
+      return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
     const [rows] = await db.query(
       'SELECT te.*, e.slot_duration FROM teacher_events te JOIN events e ON te.event_id = e.id WHERE te.event_id = ? AND te.teacher_id = ?',
       [req.params.event_id, req.params.teacher_id]
