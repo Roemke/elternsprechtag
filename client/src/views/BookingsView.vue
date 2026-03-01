@@ -184,7 +184,6 @@ const loading = ref(false)              // true während API-Calls laufen
 const multipleSchools = ref(false)      // true wenn mehr als eine Schule aktiv
 const multipleEvents = ref(false)       // true wenn mehr als ein aktiver Sprechtag vorhanden (alle Schulen)
 
-const previousEventId = ref(null)       // vorheriger Event für Socket-Room-Wechsel
 
 async function loadSchools() {
   const res = await fetch('/api/schools/active')

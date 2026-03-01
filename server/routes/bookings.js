@@ -2,6 +2,9 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../db/database')
+const { getIo } = require('../socket')
+
+
 
 // Slots eines Lehrers für ein Event abrufen (öffentlich)
 router.get('/event/:event_id/teacher/:teacher_id', async (req, res) => {
@@ -67,12 +70,19 @@ router.post('/', async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Slot bereits gebucht' })
     }
+    // event_id für Socket holen
+    const [slotRows] = await db.query(
+    'SELECT te.event_id FROM slots s JOIN teacher_events te ON s.teacher_event_id = te.id WHERE s.id = ?',
+    [slot_id]
+    )
+    const event_id = slotRows[0]?.event_id
 
     await db.query(
       'INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)',
       [slot_id, cookie_id, parent_name, child_name]
     )
     res.json({ success: true })
+    getIo().to(`event-${event_id}`).emit('slot-booked', { slot_id, event_id })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -89,6 +99,7 @@ router.delete('/:slot_id/cookie/:cookie_id', async (req, res) => {
       return res.status(403).json({ error: 'Nicht berechtigt' })
     }
     res.json({ success: true })
+    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

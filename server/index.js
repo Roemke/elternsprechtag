@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 
 const db = require('./db/database');
 
+
 // DB Verbindung testen
 db.getConnection()
     .then(() => console.log('Datenbankverbindung OK'))
@@ -13,7 +14,9 @@ db.getConnection()
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+const { initSocket } = require('./socket')
+const io = initSocket(server)
 
 app.use(express.json());
 
@@ -40,15 +43,11 @@ app.use('/api/slots', slotsRouter);
 const bookingsRouter = require('./routes/bookings');
 app.use('/api/bookings', bookingsRouter);
 
-// WebSocket Verbindung
-io.on('connection', (socket) => {
-    console.log('Client verbunden:', socket.id);
-    socket.on('disconnect', () => {
-        console.log('Client getrennt:', socket.id);
-    });
-});
+//websocket für Echtzeit-Updates bei Buchungen, ggf. anderem
 
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server läuft auf Port ${PORT}`);
 });
+
+module.exports = { io }
