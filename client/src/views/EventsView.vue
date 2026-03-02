@@ -89,6 +89,9 @@
         </div>
       </div>
       <template #footer>
+        <div> Wenn Sie Ihre Zeiten verkürzen, werden die bestehenden Slots gelöscht und neu generiert, also
+          Buchungen gehen verloren. Bei einer Verlängerung bleiben die bestehenden Slots bestehen.
+        </div>
         <Button label="Abbrechen" severity="secondary" @click="showDialog = false" />
         <Button label="Speichern" icon="pi pi-check" @click="createEvent" :loading="loading" />
       </template>
@@ -185,7 +188,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted , onUnmounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -397,6 +400,7 @@ onMounted(async () => {
   await loadSchools()
   await loadEvents()
 })
+
 </script>
 <style scoped>
 .time-input {

@@ -3,8 +3,19 @@ const express = require('express')
 const router = express.Router()
 const db = require('../db/database')
 const { getIo } = require('../socket')
+const { authMiddleware, adminMiddleware, globalAdminMiddleware } = require('../middleware/auth')
 
 
+//helper function um event_id über slot_id zu bekommen, für Websocket-Emits
+async function getEventIdBySlotId(slot_id) {
+      // event_id für Socket holen
+      const [slotRows] = await db.query(
+      'SELECT te.event_id FROM slots s JOIN teacher_events te ON s.teacher_event_id = te.id WHERE s.id = ?',
+      [slot_id]
+      )
+      const event_id = slotRows[0]?.event_id
+      return event_id
+}
 
 // Slots eines Lehrers für ein Event abrufen (öffentlich)
 router.get('/event/:event_id/teacher/:teacher_id', async (req, res) => {
@@ -70,12 +81,7 @@ router.post('/', async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Slot bereits gebucht' })
     }
-    // event_id für Socket holen
-    const [slotRows] = await db.query(
-    'SELECT te.event_id FROM slots s JOIN teacher_events te ON s.teacher_event_id = te.id WHERE s.id = ?',
-    [slot_id]
-    )
-    const event_id = slotRows[0]?.event_id
+    const event_id = await getEventIdBySlotId(slot_id)
 
     await db.query(
       'INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)',
@@ -99,16 +105,20 @@ router.delete('/:slot_id/cookie/:cookie_id', async (req, res) => {
       return res.status(403).json({ error: 'Nicht berechtigt' })
     }
     res.json({ success: true })
-    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id })
+    const event_id = await getEventIdBySlotId(req.params.slot_id)
+    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id: req.params.slot_id })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
 
 // Buchung löschen (durch Admin/Lehrer)
-router.delete('/:slot_id', async (req, res) => {
+router.delete('/:slot_id', authMiddleware,async (req, res) => {
   try {
+    const event_id = await getEventIdBySlotId(req.params.slot_id)
+    console.log("deleting booking for slot", req.params.slot_id, "event", event_id)
     await db.query('DELETE FROM bookings WHERE slot_id = ?', [req.params.slot_id])
+    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id: req.params.slot_id })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -116,7 +126,7 @@ router.delete('/:slot_id', async (req, res) => {
 })
 
 // Alle Buchungen eines Events (für Admin)
-router.get('/event/:event_id/all', async (req, res) => {
+router.get('/event/:event_id/all', adminMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.first_name, u.last_name, s.start_time, s.end_time,
@@ -149,6 +159,42 @@ router.get('/teacher/:teacher_id/event/:event_id', async (req, res) => {
       [req.params.teacher_id, req.params.event_id]
     )
     res.json(rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+//einen slot setzen durch Lehrer er kann eintragen und ändern, mache das hier, 
+//da es auch zum editieren verwendet werden kann, wenn der Lehrer Einträge ändert.
+router.post('/admin', authMiddleware, async (req, res) => {
+  try {
+    const { slot_id, parent_name, child_name } = req.body
+    const [existing] = await db.query(
+      'SELECT id FROM bookings WHERE slot_id = ?', [slot_id]
+    )
+    const event_id = await getEventIdBySlotId(slot_id)
+    if (existing.length > 0) {
+      console.log("updating existing booking for slot", slot_id)
+      await db.query( //coalesce damit nur das geändert wird, was auch übergeben wird, also parent oder child oder beides
+        `UPDATE bookings SET parent_name = COALESCE(?, parent_name), 
+              child_name = COALESCE(?, child_name) 
+              WHERE slot_id = ?`, //Backticks für Zeilenumbruch
+        [parent_name, child_name, slot_id]
+      )
+      getIo().to(`event-${event_id}`).emit('slot-updated', { slot_id })     
+      res.json({ success: true })
+    }
+    else{
+      let cn = child_name || "";
+      let pn = parent_name || "";
+      await db.query(
+        'INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)',
+        [slot_id, 'req.user.id', pn, cn]
+      )
+
+      getIo().to(`event-${event_id}`).emit('slot-booked', { slot_id })
+      res.json({ success: true })
+    } 
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

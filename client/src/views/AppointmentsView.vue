@@ -6,7 +6,9 @@
       <TabList>
         <Tab value="0">Meine Termine</Tab>
         <Tab value="1">Meine Verfügbarkeit</Tab>
-        <Tab value="2" v-if="user?.role === 'global_admin' || user?.role === 'school_admin'">Alle Termine</Tab>
+        <Tab value="2" v-if="user?.role === 'global_admin' || user?.role === 'school_admin'"
+          >Alle Termine</Tab
+        >
       </TabList>
 
       <TabPanels>
@@ -14,31 +16,59 @@
         <TabPanel value="0">
           <div class="flex flex-column gap-3 mt-3">
             <div class="flex gap-2">
+              <!-- Standard reicht nicht, möchte Datum dazu.
               <Select v-model="selectedEvent" :options="myEvents" optionLabel="name"
                 placeholder="Sprechtag wählen" @change="loadMySlots" class="w-full" />
+              -->
+              <Select
+                v-model="selectedEvent"
+                :options="myEvents"
+                optionLabel="name"
+                placeholder="Sprechtag wählen"
+                @change="loadMySlots"
+                class="w-full"
+              >
+                <template #option="{ option }">
+                  {{ option.name }} – {{ new Date(option.date).toLocaleDateString('de-DE') }}
+                </template>
+                <template #value="{ value }">
+                  {{ value?.name }} –
+                  {{ value ? new Date(value.date).toLocaleDateString('de-DE') : '' }}
+                </template>
+              </Select>
             </div>
 
-            <DataTable v-if="mySlots.length > 0" :value="mySlots" stripedRows>
+            <DataTable
+              :value="mySlots"
+              stripedRows
+            >
               <Column field="start_time" header="Von" />
               <Column field="end_time" header="Bis" />
-              <Column header="Elternteil">
+              <Column field="parent_name" header="Elternteil" :editor="true">
                 <template #body="{ data }">
-                  {{ data.parent_name || '–' }}
+                  <InputText v-model=" data.parent_name" placeholder="-"  @change="saveSlot(data)" />
                 </template>
               </Column>
-              <Column header="Kind">
+              <Column field="child_name" header="Kind" :editor="true">
                 <template #body="{ data }">
-                  {{ data.child_name || '–' }}
+                  <InputText v-model=" data.child_name" placeholder="-"  @change="saveSlot(data)" />
+                </template>
+                <template #editor="{ data, field }">
+                  <InputText v-model="data[field]" autofocus />
                 </template>
               </Column>
               <Column header="Aktionen" style="width: 80px">
                 <template #body="{ data }">
-                  <Button v-if="data.parent_name" icon="pi pi-trash" severity="danger"
-                    text @click="deleteBooking(data.slot_id)" />
+                  <Button
+                    v-if="data.parent_name"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    text
+                    @click="deleteBooking(data.slot_id)"
+                  />
                 </template>
               </Column>
             </DataTable>
-            <p v-else-if="selectedEvent">Keine Termine vorhanden.</p>
           </div>
         </TabPanel>
         <!-- Tab 2: Verfügbarkeit -->
@@ -81,16 +111,28 @@
         <TabPanel value="2" v-if="user?.role === 'global_admin' || user?.role === 'school_admin'">
           <div class="flex flex-column gap-3 mt-3">
             <div class="flex gap-2">
-              <Select v-model="selectedEventAll" :options="allEvents" optionLabel="name"
-                placeholder="Sprechtag wählen" @change="loadAllBookings" class="w-full" />
+              <Select
+                v-model="selectedEventAll"
+                :options="allEvents"
+                optionLabel="name"
+                placeholder="Sprechtag wählen"
+                @change="loadAllBookings"
+                class="w-full"
+              />
             </div>
 
-            <DataTable v-if="allBookings.length > 0" :value="allBookings" stripedRows
-              sortMode="multiple">
-              <Column header="Lehrer" sortable :sortField="data => `${data.last_name} ${data.first_name}`">
-                <template #body="{ data }">
-                  {{ data.last_name }}, {{ data.first_name }}
-                </template>
+            <DataTable
+              v-if="allBookings.length > 0"
+              :value="allBookings"
+              stripedRows
+              sortMode="multiple"
+            >
+              <Column
+                header="Lehrer"
+                sortable
+                :sortField="(data) => `${data.last_name} ${data.first_name}`"
+              >
+                <template #body="{ data }"> {{ data.last_name }}, {{ data.first_name }} </template>
               </Column>
               <Column field="start_time" header="Von" sortable />
               <Column field="end_time" header="Bis" />
@@ -98,12 +140,16 @@
               <Column field="child_name" header="Kind" />
               <Column header="Aktionen" style="width: 80px">
                 <template #body="{ data }">
-                  <Button icon="pi pi-trash" severity="danger"
-                    text @click="deleteBooking(data.slot_id)" />
+                  <Button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    text
+                    @click="deleteBooking(data.slot_id)"
+                  />
                 </template>
               </Column>
             </DataTable>
-            <p v-else-if="selectedEventAll">Keine Buchungen vorhanden.</p>
+            <p v-if="selectedEventAll">Keine Buchungen vorhanden.</p>
           </div>
         </TabPanel>
       </TabPanels>
@@ -141,9 +187,7 @@ const allBookings = ref([])
 const myTeacherEvents = ref([])
 
 async function loadMyEvents() {
-  const url = user?.role === 'global_admin'
-    ? '/api/events'
-    : `/api/events/school/${user.school_id}`
+  const url = user?.role === 'global_admin' ? '/api/events' : `/api/events/school/${user.school_id}`
   const res = await authFetch(url)
   myEvents.value = await res.json()
   allEvents.value = myEvents.value
@@ -178,13 +222,24 @@ async function saveTeacherEvent(te) {
       active: te.active,
     }),
   })
-  await authFetch(`/api/slots/generate/${te.event_id}/teacher/${user.id}`, { method: 'POST' })
 }
 
 async function loadMyTeacherEvents() {
   const res = await authFetch(`/api/users/${user.id}/teacherevents`)
   const data = await res.json()
-  myTeacherEvents.value = data.map(t => ({ ...t, active: !!t.active }))
+  myTeacherEvents.value = data.map((t) => ({ ...t, active: !!t.active }))
+}
+
+async function saveSlot(data) {
+  if (!data.parent_name && !data.child_name) return
+  await authFetch('/api/bookings/admin', {
+    method: 'POST',
+    body: JSON.stringify({
+      slot_id: data.slot_id,
+      parent_name: data.parent_name,
+      child_name: data.child_name,
+    }),
+  })
 }
 
 onMounted(async () => {

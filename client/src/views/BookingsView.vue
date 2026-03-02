@@ -156,34 +156,33 @@ function getCookieId() {
 }
 
 // Identifikation des Nutzers ohne Login
-const cookieId = getCookieId()          // eindeutige ID aus Browser-Cookie, identifiziert den Elternteil
+const cookieId = getCookieId() // eindeutige ID aus Browser-Cookie, identifiziert den Elternteil
 
 // Ablaufsteuerung
-const step = ref(1)                     // 1=Schule, 2=Sprechtag, 3=Lehrer, 4=Slot+Formular
-const phase = ref('select')             // 'select'=Auswahlmodus, 'booked'=nach Buchung
+const step = ref(1) // 1=Schule, 2=Sprechtag, 3=Lehrer, 4=Slot+Formular
+const phase = ref('select') // 'select'=Auswahlmodus, 'booked'=nach Buchung
 
 // Geladene Stammdaten
-const schools = ref([])                 // alle Schulen mit aktiven Sprechtagen
-const events = ref([])                  // alle aktiven Sprechtage (aller Schulen)
-const teachers = ref([])                // Lehrer des gewählten Sprechtags
-const slots = ref([])                   // Slots des gewählten Lehrers (mit booked-Flag)
-const myBookings = ref([])              // gebuchte Termine des aktuellen Nutzers (gefiltert nach Event)
+const schools = ref([]) // alle Schulen mit aktiven Sprechtagen
+const events = ref([]) // alle aktiven Sprechtage (aller Schulen)
+const teachers = ref([]) // Lehrer des gewählten Sprechtags
+const slots = ref([]) // Slots des gewählten Lehrers (mit booked-Flag)
+const myBookings = ref([]) // gebuchte Termine des aktuellen Nutzers (gefiltert nach Event)
 
 // Aktuelle Auswahl
-const selectedSchool = ref(null)        // gewählte Schule
-const selectedEvent = ref(null)         // gewählter Sprechtag
-const selectedTeacher = ref(null)       // gewählter Lehrer
-const selectedSlot = ref(null)          // gewählter Slot (noch nicht gebucht)
+const selectedSchool = ref(null) // gewählte Schule
+const selectedEvent = ref(null) // gewählter Sprechtag
+const selectedTeacher = ref(null) // gewählter Lehrer
+const selectedSlot = ref(null) // gewählter Slot (noch nicht gebucht)
 
 // Formulardaten
-const parentName = ref(localStorage.getItem('parent_name') || '')  // Name des Elternteils (aus localStorage vorbelegt)
-const childName = ref(localStorage.getItem('child_name') || '')    // Name des Kindes (aus localStorage vorbelegt)
+const parentName = ref(localStorage.getItem('parent_name') || '') // Name des Elternteils (aus localStorage vorbelegt)
+const childName = ref(localStorage.getItem('child_name') || '') // Name des Kindes (aus localStorage vorbelegt)
 
 // Hilfsvariablen
-const loading = ref(false)              // true während API-Calls laufen
-const multipleSchools = ref(false)      // true wenn mehr als eine Schule aktiv
-const multipleEvents = ref(false)       // true wenn mehr als ein aktiver Sprechtag vorhanden (alle Schulen)
-
+const loading = ref(false) // true während API-Calls laufen
+const multipleSchools = ref(false) // true wenn mehr als eine Schule aktiv
+const multipleEvents = ref(false) // true wenn mehr als ein aktiver Sprechtag vorhanden (alle Schulen)
 
 async function loadSchools() {
   const res = await fetch('/api/schools/active')
@@ -340,32 +339,66 @@ watch(selectedEvent, (newVal, oldVal) => {
   if (oldVal) socket.emit('leave-event', oldVal.id)
   if (newVal) socket.emit('join-event', newVal.id)
 })
+
 onMounted(async () => {
+  await loadSchools()
+  await loadMyBookings()
   socket.connect()
 
   socket.on('slot-booked', ({ slot_id }) => {
     // Slot als gebucht markieren
-    const slot = slots.value.find(s => s.id === slot_id)
+    console.log('Slot gebucht:', slot_id)
+    const slot = slots.value.find((s) => s.id === slot_id)
     if (slot) slot.booked = true
+  })
+  socket.on('slot-updated', ({ slot_id }) => {
+    // nur mitteilen, brauche ich hier eigentlich nicht
+    console.log('Slot updated:', slot_id)
   })
 
   socket.on('slot-cancelled', ({ slot_id }) => {
     // Slot als frei markieren
-    const slot = slots.value.find(s => s.id === slot_id)
+    console.log('Slot storniert:', slot_id)
+    const id = parseInt(slot_id)
+    const slot = slots.value.find((s) => s.id === id)
+    console.log('Slot gefunden:', slot)
     if (slot) slot.booked = false
   })
 
-  await loadSchools()
-  await loadMyBookings()
+  socket.on('slots-generated', async ({ teacher_event_id }) => {
+    console.log('Socket-Event: Slots generiert für Lehrer:', teacher_event_id)
+    await loadMyBookings() // eigene Buchungen neu laden
+    // Slots neu laden wenn ein Lehrer gewählt ist
+    if (selectedTeacher.value) {
+      const res = await fetch(
+        `/api/bookings/event/${selectedEvent.value.id}/teacher/${selectedTeacher.value.id}`,
+      )
+      slots.value = await res.json()
+    }
+  })
+
+  socket.on('slots-extended', async ({ teacher_event_id }) => {
+    console.log('Socket-Event: Slots erweitert für Lehrer:', teacher_event_id)
+    if (selectedTeacher.value) {
+      const res = await fetch(`/api/bookings/event/${selectedEvent.value.id}/teacher/${selectedTeacher.value.id}`)
+      slots.value = await res.json()
+    }
+  })
 })
 
+
 onUnmounted(() => {
+  socket.off('slot-cancelled')
+  socket.off('slot-booked')
+  socket.off('slot-updated')
+  socket.off('slots-generated')
+  socket.off('slots-extended')
+
   if (selectedEvent.value) {
     socket.emit('leave-event', selectedEvent.value.id)
   }
   socket.disconnect()
 })
-
 </script>
 
 <style scoped>
