@@ -9,3 +9,7 @@ export function authFetch(url, options = {}) {
     },
   })
 }
+export function formatTime(time) {
+  if (!time) return ''
+  return time.substring(0, 5) // '15:30:00' → '15:30'
+}

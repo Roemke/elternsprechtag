@@ -82,7 +82,7 @@
             <Button
               v-for="slot in slots"
               :key="slot.id"
-              :label="`${slot.start_time} – ${slot.end_time}`"
+              :label="`${formatTime(slot.start_time)} – ${formatTime(slot.end_time)}`"
               :severity="slot.booked ? 'secondary' : 'success'"
               :disabled="slot.booked"
               :outlined="selectedSlot?.id !== slot.id"
@@ -144,6 +144,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Message from 'primevue/message'
 import socket from '../utils/socket.js'
+import { formatTime } from '../utils/api.js'
 
 // Cookie-ID generieren oder aus Cookie lesen
 function getCookieId() {
@@ -380,12 +381,13 @@ onMounted(async () => {
   socket.on('slots-extended', async ({ teacher_event_id }) => {
     console.log('Socket-Event: Slots erweitert für Lehrer:', teacher_event_id)
     if (selectedTeacher.value) {
-      const res = await fetch(`/api/bookings/event/${selectedEvent.value.id}/teacher/${selectedTeacher.value.id}`)
+      const res = await fetch(
+        `/api/bookings/event/${selectedEvent.value.id}/teacher/${selectedTeacher.value.id}`,
+      )
       slots.value = await res.json()
     }
   })
 })
-
 
 onUnmounted(() => {
   socket.off('slot-cancelled')

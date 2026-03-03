@@ -1,24 +1,27 @@
 // routes/bookings.js
-const express = require('express')
-const router = express.Router()
-const db = require('../db/database')
-const { getIo } = require('../socket')
-const { authMiddleware, adminMiddleware, globalAdminMiddleware } = require('../middleware/auth')
-
+const express = require("express");
+const router = express.Router();
+const db = require("../db/database");
+const { getIo } = require("../socket");
+const {
+  authMiddleware,
+  adminMiddleware,
+  globalAdminMiddleware,
+} = require("../middleware/auth");
 
 //helper function um event_id über slot_id zu bekommen, für Websocket-Emits
 async function getEventIdBySlotId(slot_id) {
-      // event_id für Socket holen
-      const [slotRows] = await db.query(
-      'SELECT te.event_id FROM slots s JOIN teacher_events te ON s.teacher_event_id = te.id WHERE s.id = ?',
-      [slot_id]
-      )
-      const event_id = slotRows[0]?.event_id
-      return event_id
+  // event_id für Socket holen
+  const [slotRows] = await db.query(
+    "SELECT te.event_id FROM slots s JOIN teacher_events te ON s.teacher_event_id = te.id WHERE s.id = ?",
+    [slot_id],
+  );
+  const event_id = slotRows[0]?.event_id;
+  return event_id;
 }
 
 // Slots eines Lehrers für ein Event abrufen (öffentlich)
-router.get('/event/:event_id/teacher/:teacher_id', async (req, res) => {
+router.get("/event/:event_id/teacher/:teacher_id", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT s.id, s.start_time, s.end_time,
@@ -28,16 +31,16 @@ router.get('/event/:event_id/teacher/:teacher_id', async (req, res) => {
        LEFT JOIN bookings b ON s.id = b.slot_id
        WHERE te.event_id = ? AND te.teacher_id = ?
        ORDER BY s.start_time`,
-      [req.params.event_id, req.params.teacher_id]
-    )
-    res.json(rows)
+      [req.params.event_id, req.params.teacher_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Alle Lehrer eines aktiven Events abrufen (öffentlich)
-router.get('/event/:event_id/teachers', async (req, res) => {
+router.get("/event/:event_id/teachers", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.id, u.first_name, u.last_name, te.active
@@ -45,88 +48,100 @@ router.get('/event/:event_id/teachers', async (req, res) => {
        JOIN users u ON te.teacher_id = u.id
        WHERE te.event_id = ?
        ORDER BY u.last_name, u.first_name`,
-      [req.params.event_id]
-    )
-    res.json(rows)
+      [req.params.event_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Aktive Events einer Schule abrufen (öffentlich)
-router.get('/school/:school_id/events', async (req, res) => {
+router.get("/school/:school_id/events", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, name, date, time_start, time_end,  school_id
        FROM events
        WHERE school_id = ? AND active = 1
        ORDER BY date`,
-      [req.params.school_id]
-    )
-    res.json(rows)
+      [req.params.school_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Slot buchen
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { slot_id, cookie_id, parent_name, child_name } = req.body
+    const { slot_id, cookie_id, parent_name, child_name } = req.body;
 
     // Prüfen ob Slot noch frei
     const [existing] = await db.query(
-      'SELECT id FROM bookings WHERE slot_id = ?', [slot_id]
-    )
+      "SELECT id FROM bookings WHERE slot_id = ?",
+      [slot_id],
+    );
     if (existing.length > 0) {
-      return res.status(409).json({ error: 'Slot bereits gebucht' })
+      return res.status(409).json({ error: "Slot bereits gebucht" });
     }
-    const event_id = await getEventIdBySlotId(slot_id)
+    const event_id = await getEventIdBySlotId(slot_id);
 
     await db.query(
-      'INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)',
-      [slot_id, cookie_id, parent_name, child_name]
-    )
-    res.json({ success: true })
-    getIo().to(`event-${event_id}`).emit('slot-booked', { slot_id, event_id })
+      "INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)",
+      [slot_id, cookie_id, parent_name, child_name],
+    );
+    getIo().to(`event-${event_id}`).emit("slot-booked", { slot_id, event_id });
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Buchung löschen (durch Eltern via Cookie)
-router.delete('/:slot_id/cookie/:cookie_id', async (req, res) => {
+router.delete("/:slot_id/cookie/:cookie_id", async (req, res) => {
   try {
     const [result] = await db.query(
-      'DELETE FROM bookings WHERE slot_id = ? AND cookie_id = ?',
-      [req.params.slot_id, req.params.cookie_id]
-    )
+      "DELETE FROM bookings WHERE slot_id = ? AND cookie_id = ?",
+      [req.params.slot_id, req.params.cookie_id],
+    );
     if (result.affectedRows === 0) {
-      return res.status(403).json({ error: 'Nicht berechtigt' })
+      return res.status(403).json({ error: "Nicht berechtigt" });
     }
-    res.json({ success: true })
-    const event_id = await getEventIdBySlotId(req.params.slot_id)
-    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id: req.params.slot_id })
+    res.json({ success: true });
+    const event_id = await getEventIdBySlotId(req.params.slot_id);
+    getIo()
+      .to(`event-${event_id}`)
+      .emit("slot-cancelled", { slot_id: req.params.slot_id });
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Buchung löschen (durch Admin/Lehrer)
-router.delete('/:slot_id', authMiddleware,async (req, res) => {
+router.delete("/:slot_id", authMiddleware, async (req, res) => {
   try {
-    const event_id = await getEventIdBySlotId(req.params.slot_id)
-    console.log("deleting booking for slot", req.params.slot_id, "event", event_id)
-    await db.query('DELETE FROM bookings WHERE slot_id = ?', [req.params.slot_id])
-    getIo().to(`event-${event_id}`).emit('slot-cancelled', { slot_id: req.params.slot_id })
-    res.json({ success: true })
+    const event_id = await getEventIdBySlotId(req.params.slot_id);
+    console.log(
+      "deleting booking for slot",
+      req.params.slot_id,
+      "event",
+      event_id,
+    );
+    await db.query("DELETE FROM bookings WHERE slot_id = ?", [
+      req.params.slot_id,
+    ]);
+    getIo()
+      .to(`event-${event_id}`)
+      .emit("slot-cancelled", { slot_id: req.params.slot_id });
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Alle Buchungen eines Events (für Admin)
-router.get('/event/:event_id/all', adminMiddleware, async (req, res) => {
+router.get("/event/:event_id/all", adminMiddleware, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.first_name, u.last_name, s.start_time, s.end_time,
@@ -137,16 +152,16 @@ router.get('/event/:event_id/all', adminMiddleware, async (req, res) => {
        JOIN users u ON te.teacher_id = u.id
        WHERE te.event_id = ?
        ORDER BY u.last_name, u.first_name, s.start_time`,
-      [req.params.event_id]
-    )
-    res.json(rows)
+      [req.params.event_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 // Eigene Buchungen eines Lehrers
-router.get('/teacher/:teacher_id/event/:event_id', async (req, res) => {
+router.get("/teacher/:teacher_id/event/:event_id", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT s.id as slot_id, s.start_time, s.end_time,
@@ -156,52 +171,53 @@ router.get('/teacher/:teacher_id/event/:event_id', async (req, res) => {
        LEFT JOIN bookings b ON s.id = b.slot_id
        WHERE te.teacher_id = ? AND te.event_id = ?
        ORDER BY s.start_time`,
-      [req.params.teacher_id, req.params.event_id]
-    )
-    res.json(rows)
+      [req.params.teacher_id, req.params.event_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
-//einen slot setzen durch Lehrer er kann eintragen und ändern, mache das hier, 
+//einen slot setzen durch Lehrer er kann eintragen und ändern, mache das hier,
 //da es auch zum editieren verwendet werden kann, wenn der Lehrer Einträge ändert.
-router.post('/admin', authMiddleware, async (req, res) => {
+router.post("/admin", authMiddleware, async (req, res) => {
   try {
-    const { slot_id, parent_name, child_name } = req.body
+    const { slot_id, parent_name, child_name } = req.body;
     const [existing] = await db.query(
-      'SELECT id FROM bookings WHERE slot_id = ?', [slot_id]
-    )
-    const event_id = await getEventIdBySlotId(slot_id)
+      "SELECT id FROM bookings WHERE slot_id = ?",
+      [slot_id],
+    );
+    const event_id = await getEventIdBySlotId(slot_id);
     if (existing.length > 0) {
-      console.log("updating existing booking for slot", slot_id)
-      await db.query( //coalesce damit nur das geändert wird, was auch übergeben wird, also parent oder child oder beides
+      console.log("updating existing booking for slot", slot_id);
+      await db.query(
+        //coalesce damit nur das geändert wird, was auch übergeben wird, also parent oder child oder beides
         `UPDATE bookings SET parent_name = COALESCE(?, parent_name), 
               child_name = COALESCE(?, child_name) 
               WHERE slot_id = ?`, //Backticks für Zeilenumbruch
-        [parent_name, child_name, slot_id]
-      )
-      getIo().to(`event-${event_id}`).emit('slot-updated', { slot_id })     
-      res.json({ success: true })
-    }
-    else{
+        [parent_name, child_name, slot_id],
+      );
+      getIo().to(`event-${event_id}`).emit("slot-updated", { slot_id });
+      res.json({ success: true });
+    } else {
       let cn = child_name || "";
       let pn = parent_name || "";
       await db.query(
-        'INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)',
-        [slot_id, 'req.user.id', pn, cn]
-      )
+        "INSERT INTO bookings (slot_id, cookie_id, parent_name, child_name) VALUES (?, ?, ?, ?)",
+        [slot_id, "req.user.id", pn, cn],
+      );
 
-      getIo().to(`event-${event_id}`).emit('slot-booked', { slot_id })
-      res.json({ success: true })
-    } 
+      getIo().to(`event-${event_id}`).emit("slot-booked", { slot_id });
+      res.json({ success: true });
+    }
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 //bookings mit cookie_id abrufen, für Eltern, damit sie ihre Buchungen sehen und ggf. löschen können
-router.get('/cookie/:cookie_id', async (req, res) => {
+router.get("/cookie/:cookie_id", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT b.slot_id, s.start_time, s.end_time, te.event_id,
@@ -213,11 +229,11 @@ router.get('/cookie/:cookie_id', async (req, res) => {
        JOIN users u ON te.teacher_id = u.id
        WHERE b.cookie_id = ?
        ORDER BY s.start_time`,
-      [req.params.cookie_id]
-    )
-    res.json(rows)
+      [req.params.cookie_id],
+    );
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
-module.exports = router
+});
+module.exports = router;

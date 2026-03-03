@@ -89,8 +89,10 @@
         </div>
       </div>
       <template #footer>
-        <div> Wenn Sie Ihre Zeiten verkürzen, werden die bestehenden Slots gelöscht und neu generiert, also
-          Buchungen gehen verloren. Bei einer Verlängerung bleiben die bestehenden Slots bestehen.
+        <div>
+          Wenn Sie Ihre Zeiten verkürzen, werden die bestehenden Slots gelöscht und neu generiert,
+          also Buchungen gehen verloren. Bei einer Verlängerung bleiben die bestehenden Slots
+          bestehen.
         </div>
         <Button label="Abbrechen" severity="secondary" @click="showDialog = false" />
         <Button label="Speichern" icon="pi pi-check" @click="createEvent" :loading="loading" />
@@ -188,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted , onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -278,8 +280,6 @@ async function createEvent() {
         time_end: '18:30',
         slot_duration: 15,
       }
-      const eventData = await res.json()
-      await authFetch(`/api/slots/generate/${eventData.id}`, { method: 'POST' })
       await loadEvents()
     }
   } finally {
@@ -322,9 +322,6 @@ async function doSaveEvent(timesChanged) {
       }),
     })
     if (res.ok) {
-      if (timesChanged) {
-        await authFetch(`/api/slots/generate/${editForm.value.id}`, { method: 'POST' })
-      }
       showEditDialog.value = false
       await loadEvents()
     }
@@ -391,16 +388,12 @@ async function updateTeacher(teacher) {
       active: teacher.active,
     }),
   })
-  await authFetch(`/api/slots/generate/${currentEventId.value}/teacher/${teacher.teacher_id}`, {
-    method: 'POST',
-  })
 }
 
 onMounted(async () => {
   await loadSchools()
   await loadEvents()
 })
-
 </script>
 <style scoped>
 .time-input {

@@ -38,20 +38,17 @@
               </Select>
             </div>
 
-            <DataTable
-              :value="mySlots"
-              stripedRows
-            >
+            <DataTable :value="mySlots" stripedRows>
               <Column field="start_time" header="Von" />
               <Column field="end_time" header="Bis" />
               <Column field="parent_name" header="Elternteil" :editor="true">
                 <template #body="{ data }">
-                  <InputText v-model=" data.parent_name" placeholder="-"  @change="saveSlot(data)" />
+                  <InputText v-model="data.parent_name" placeholder="-" @change="saveSlot(data)" />
                 </template>
               </Column>
               <Column field="child_name" header="Kind" :editor="true">
                 <template #body="{ data }">
-                  <InputText v-model=" data.child_name" placeholder="-"  @change="saveSlot(data)" />
+                  <InputText v-model="data.child_name" placeholder="-" @change="saveSlot(data)" />
                 </template>
                 <template #editor="{ data, field }">
                   <InputText v-model="data[field]" autofocus />
@@ -149,7 +146,7 @@
                 </template>
               </Column>
             </DataTable>
-            <p v-if="selectedEventAll">Keine Buchungen vorhanden.</p>
+            <p v-else-if="selectedEventAll">Keine Buchungen vorhanden.</p>
           </div>
         </TabPanel>
       </TabPanels>
@@ -170,7 +167,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
-import { authFetch } from '../utils/api.js'
+import { authFetch, formatTime } from '../utils/api.js'
 
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 
@@ -196,13 +193,23 @@ async function loadMyEvents() {
 async function loadMySlots() {
   if (!selectedEvent.value) return
   const res = await authFetch(`/api/bookings/teacher/${user.id}/event/${selectedEvent.value.id}`)
-  mySlots.value = await res.json()
+  const data = await res.json()
+  mySlots.value = data.map((s) => ({
+    ...s,
+    start_time: formatTime(s.start_time),
+    end_time: formatTime(s.end_time),
+  }))
 }
 
 async function loadAllBookings() {
   if (!selectedEventAll.value) return
   const res = await authFetch(`/api/bookings/event/${selectedEventAll.value.id}/all`)
-  allBookings.value = await res.json()
+  const data = await res.json()
+  allBookings.value = data.map((b) => ({
+    ...b,
+    start_time: formatTime(b.start_time),
+    end_time: formatTime(b.end_time),
+  }))
 }
 
 async function deleteBooking(slot_id) {

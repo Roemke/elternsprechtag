@@ -8,7 +8,6 @@ const {
   adminMiddleware,
   globalAdminMiddleware,
 } = require("../middleware/auth");
-const { generateSlots, extendSlots } = require("./slots");
 
 // Alle Events abrufen
 router.get("/", globalAdminMiddleware, async (req, res) => {
@@ -68,12 +67,17 @@ router.post("/", adminMiddleware, async (req, res) => {
     );
 
     for (const teacher of teachers) {
-      await db.query(
+      const [te] = await db.query(
         "INSERT INTO teacher_events (teacher_id, event_id, time_start, time_end, active) VALUES (?, ?, ?, ?, 1)",
         [teacher.id, event_id, time_start, time_end],
       );
+      await generateSlots(
+        te.insertId,
+        time_start,
+        time_end,
+        slot_duration || 15,
+      );
     }
-
     res.json({ id: event_id });
   } catch (err) {
     console.error("Fehler:", err.message);
@@ -103,7 +107,7 @@ router.put("/:id", adminMiddleware, async (req, res) => {
     //Frage die Zeiten ab, wenn sie kürzer sind müssen die Slots gelöscht und neu generiert werden,
     // wenn sie länger sind, können die Slots bleiben, es sei denn sie überschneiden sich mit den neuen Zeiten,
     // das wäre dann ein Problem, aber das lasse ich erstmal außen vor, da es eher
-    // unwahrscheinlich ist, dass ein Lehrer spontan seine Zeiten verlängert :-)
+    // dass dieser fall auftritt.
     const [[oldEvent]] = await db.query(
       "SELECT time_start, time_end FROM events WHERE id = ?",
       [req.params.id],
@@ -245,10 +249,6 @@ router.delete("/:id", adminMiddleware, async (req, res) => {
         "DELETE FROM bookings WHERE slot_id IN (SELECT id FROM slots WHERE teacher_event_id = ?)",
         [te.id],
       );
-      await db.query(
-        "DELETE FROM waitlist WHERE slot_id IN (SELECT id FROM slots WHERE teacher_event_id = ?)",
-        [te.id],
-      );
       await db.query("DELETE FROM slots WHERE teacher_event_id = ?", [te.id]);
     }
     await db.query("DELETE FROM teacher_events WHERE event_id = ?", [
@@ -278,4 +278,123 @@ router.get("/:id/teachers", authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
+//Hilfsfunktionen für die Slots
+
+// Slots für einen teacher_event generieren
+async function generateSlots(
+  teacher_event_id,
+  time_start,
+  time_end,
+  slot_duration,
+) {
+  console.log(
+    "generateSlots:",
+    teacher_event_id,
+    time_start,
+    time_end,
+    slot_duration,
+  );
+  // Bestehende Slots löschen
+  await db.query(
+    "DELETE FROM bookings WHERE slot_id IN (SELECT id FROM slots WHERE teacher_event_id = ?)",
+    [teacher_event_id],
+  );
+  await db.query("DELETE FROM slots WHERE teacher_event_id = ?", [
+    teacher_event_id,
+  ]);
+  const [eventRows] = await db.query(
+    "SELECT event_id FROM teacher_events WHERE id = ?",
+    [teacher_event_id],
+  );
+  if (eventRows.length === 0) {
+    throw new Error("Teacher event not found");
+  }
+  const eventId = eventRows[0].event_id;
+
+  const slots = [];
+  const [startHour, startMin] = time_start.split(":").map(Number);
+  const [endHour, endMin] = time_end.split(":").map(Number);
+  console.log("start:", startHour, startMin, "end:", endHour, endMin);
+  let current = startHour * 60 + startMin;
+  const end = endHour * 60 + endMin;
+
+  while (current + slot_duration <= end) {
+    const slotStart = `${String(Math.floor(current / 60)).padStart(2, "0")}:${String(current % 60).padStart(2, "0")}`;
+    const slotEnd = `${String(Math.floor((current + slot_duration) / 60)).padStart(2, "0")}:${String((current + slot_duration) % 60).padStart(2, "0")}`;
+    slots.push([teacher_event_id, slotStart, slotEnd]);
+    current += slot_duration;
+  }
+
+  for (const slot of slots) {
+    await db.query(
+      "INSERT INTO slots (teacher_event_id, start_time, end_time) VALUES (?, ?, ?)",
+      slot,
+    );
+  }
+
+  // Informiere alle verbundenen Clients über die neuen Slots
+  getIo().to(`event-${eventId}`).emit("slots-generated", { teacher_event_id }); //name des members wird mit übertragen
+
+  return slots.length;
+}
+//slots eines lehrers erweitern
+async function extendSlots(
+  teacher_event_id,
+  new_time_start,
+  new_time_end,
+  slot_duration,
+) {
+  console.log(
+    "extendSlots:",
+    teacher_event_id,
+    new_time_start,
+    new_time_end,
+    slot_duration,
+  );
+  const [eventRows] = await db.query(
+    "SELECT event_id FROM teacher_events WHERE id = ?",
+    [teacher_event_id],
+  );
+  if (eventRows.length === 0) {
+    throw new Error("Teacher event not found");
+  }
+  //vorhandene Slots holen, nur die neuen hinzufügen, die außerhalb der alten Zeiten liegen
+  const [slotRows] = await db.query(
+    "SELECT start_time, end_time FROM slots WHERE teacher_event_id = ?",
+    [teacher_event_id],
+  );
+  const existingSlots = slotRows.map((row) => ({
+    start: row.start_time.substring(0, 5), //nur Stunden und Minuten, Sekunden weglassen
+    end: row.end_time.substring(0, 5),
+  }));
+  const slots = [];
+  const [startHour, startMin] = new_time_start.split(":").map(Number);
+  const [endHour, endMin] = new_time_end.split(":").map(Number);
+  console.log("new start:", startHour, startMin, "new end:", endHour, endMin);
+  let current = startHour * 60 + startMin;
+  const newEnd = endHour * 60 + endMin;
+
+  while (current + slot_duration <= newEnd) {
+    //strings in Zeiten aus Minuten berechnen
+    const slotStart = `${String(Math.floor(current / 60)).padStart(2, "0")}:${String(current % 60).padStart(2, "0")}`;
+    const slotEnd = `${String(Math.floor((current + slot_duration) / 60)).padStart(2, "0")}:${String((current + slot_duration) % 60).padStart(2, "0")}`;
+    //nur hinzufügen, wenn es keinen bestehenden Slot gibt, der sich mit diesem überschneidet
+    if (!existingSlots.some((s) => slotStart < s.end && slotEnd > s.start)) {
+      slots.push([teacher_event_id, slotStart, slotEnd]);
+    }
+    current += slot_duration;
+  }
+
+  for (const slot of slots) {
+    await db.query(
+      "INSERT INTO slots (teacher_event_id, start_time, end_time) VALUES (?, ?, ?)",
+      slot,
+    );
+  }
+
+  // Informiere alle verbundenen Clients über die neuen Slots
+  const eventId = eventRows[0].event_id;
+  getIo().to(`event-${eventId}`).emit("slots-extended", { teacher_event_id });
+}
+
+module.exports = { router, generateSlots, extendSlots };
