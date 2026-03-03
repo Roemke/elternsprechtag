@@ -26,7 +26,7 @@ Getestet unter Ubuntu 24. Sollte auf anderen Linux-Distributionen ebenfalls funk
 ### 1. Repository klonen
 
 ```bash
-git clone https://github.com:Roemke/elternsprechtag.git
+git clone https://github.com/Roemke/elternsprechtag.git
 cd elternsprechtag
 ```
 
