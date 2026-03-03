@@ -37,6 +37,7 @@
             </div>
 
             <!-- Authentifizierung -->
+             <!-- erstmal nicht
             <div class="p-card p-4">
               <h3 class="mt-0">Anmeldung</h3>
               <div class="flex flex-column gap-3">
@@ -47,7 +48,7 @@
                 </div>
                 <Button label="Speichern" icon="pi pi-check" @click="saveAuthMethod" :loading="loadingAuth" />
               </div>
-            </div>
+            </div>-->
 
           </div>
   </div>

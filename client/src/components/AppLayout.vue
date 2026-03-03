@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Menubar :model="menuItems" class="mb-4">
+    <Menubar :model="menuItems" class="mb-4 fixed top-0 left-0 right-0 z-5 ">
       <template #start>
         <span class="font-bold text-xl mr-4">🏫 Elternsprechtag</span>
       </template>
@@ -10,7 +10,7 @@
       </template>
     </Menubar>
 
-    <div class="p-4">
+    <div class="p-7">
       <slot />
     </div>
   </div>

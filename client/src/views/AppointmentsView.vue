@@ -234,7 +234,12 @@ async function saveTeacherEvent(te) {
 async function loadMyTeacherEvents() {
   const res = await authFetch(`/api/users/${user.id}/teacherevents`)
   const data = await res.json()
-  myTeacherEvents.value = data.map((t) => ({ ...t, active: !!t.active }))
+  myTeacherEvents.value = data.map((t) => ({
+     ...t,
+     active: !!t.active,
+     time_start:formatTime(t.time_start),
+     time_end: formatTime(t.time_end),
+    }))
 }
 
 async function saveSlot(data) {

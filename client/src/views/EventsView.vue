@@ -203,7 +203,7 @@ import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import ConfirmDialog from 'primevue/confirmdialog'
-import { authFetch } from '../utils/api.js'
+import { authFetch, formatTime } from '../utils/api.js'
 
 const confirmD = useConfirm()
 
@@ -216,6 +216,7 @@ const showEditDialog = ref(false)
 const showTeachersDialog = ref(false)
 const loading = ref(false)
 const currentEventId = ref(null)
+const originalTime = ref({ time_start: '', time_end: '', slot_duration: 15 }) //speichert die ursprünglichen Zeiten, um zu vergleichen ob sie geändert wurden
 
 const form = ref({
   school_id: null,
@@ -248,7 +249,12 @@ async function loadEvents() {
   //console.log('Status:', res.status)
   //const text = await res.text()
   //console.log('Response:', text)
-  events.value = await res.json()
+  const data = await res.json()
+  events.value = data.map((e) => ({
+    ...e,
+    time_start: formatTime(e.time_start),
+    time_end: formatTime(e.time_end),
+  }))
 }
 
 async function loadSchools() {
@@ -287,7 +293,6 @@ async function createEvent() {
   }
 }
 
-const originalTime = ref({ time_start: '', time_end: '', slot_duration: 15 }) //speichert die ursprünglichen Zeiten, um zu vergleichen ob sie geändert wurden
 function editEvent(event) {
   originalTime.value = {
     time_start: event.time_start,
@@ -298,8 +303,8 @@ function editEvent(event) {
     id: event.id,
     name: event.name,
     date: new Date(event.date),
-    time_start: event.time_start,
-    time_end: event.time_end,
+    time_start: formatTime(event.time_start),
+    time_end: formatTime(event.time_end),
     slot_duration: event.slot_duration,
     active: !!event.active,
   }
@@ -373,7 +378,12 @@ async function manageTeachers(event) {
   currentEventId.value = event.id
   const res = await authFetch(`/api/events/${event.id}/teachers`)
   const data = await res.json()
-  eventTeachers.value = data.map((t) => ({ ...t, active: !!t.active }))
+  eventTeachers.value = data.map((t) => ({
+    ...t,
+    active: !!t.active,
+    time_start: formatTime(t.time_start),
+    time_end: formatTime(t.time_end),
+  }))
   //überschreiben mit active true/false, damit Checkbox funktioniert, ohne dass die DB geändert werden muss
   showTeachersDialog.value = true
 }
