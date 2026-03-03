@@ -26,7 +26,7 @@ Getestet unter Ubuntu 24. Sollte auf anderen Linux-Distributionen ebenfalls funk
 ### 1. Repository klonen
 
 ```bash
-git clone git@github.com:Roemke/elternsprechtag.git
+git clone https://github.com:Roemke/elternsprechtag.git
 cd elternsprechtag
 ```
 
@@ -193,11 +193,11 @@ node -e "const b = require('bcrypt'); b.hash('IhrPasswort', 10).then(console.log
 
 ### Rollen
 
-| Rolle | Berechtigungen |
-|-------|----------------|
+| Rolle          | Berechtigungen                                    |
+| -------------- | ------------------------------------------------- |
 | `global_admin` | Alles – Schulen, Lehrer, Sprechtage aller Schulen |
-| `school_admin` | Lehrer und Sprechtage der eigenen Schule |
-| `teacher` | Eigene Termine und Verfügbarkeit |
+| `school_admin` | Lehrer und Sprechtage der eigenen Schule          |
+| `teacher`      | Eigene Termine und Verfügbarkeit                  |
 
 ---
 
