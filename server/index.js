@@ -5,7 +5,6 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const db = require("./db/database");
-
 // DB Verbindung testen
 db.getConnection()
   .then(() => console.log("Datenbankverbindung OK"))
@@ -47,6 +46,8 @@ app.use("/api/bookings", bookingsRouter);
 const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
+  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'gesetzt' : 'FEHLT')
+
 });
 
 module.exports = { io };

@@ -41,34 +41,49 @@ Das Schema enthält bereits `CREATE DATABASE` und `USE` – keine weiteren Schri
 Datenbankbenutzer anlegen:
 
 ```sql
-CREATE USER 'elternsprechtag'@'localhost' IDENTIFIED BY 'sicheresPasswort';
-GRANT ALL PRIVILEGES ON elternsprechtag.* TO 'elternsprechtag'@'localhost';
+CREATE USER 'eltern'@'localhost' IDENTIFIED BY 'sicheresPasswort';
+GRANT ALL PRIVILEGES ON elternsprechtag.* TO 'eltern'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
 ### 3. Server einrichten
 
+Gegebenenfalls node aktualisieren / neuere Version installieren
+
 ```bash
+cd /var/www/elternsprechtag
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
 cd server
+nvm install --lts
+nvm use --lts
+which node
+```
+
+Die node-Version für systemd - unten notieren.
+
+Installation
+
+```bash
 npm install
 cp .env.example .env
 ```
 
-`.env` anpassen:
-
-```
-DB_HOST=localhost
-DB_USER=elternsprechtag
-DB_PASSWORD=sicheresPasswort
-DB_NAME=elternsprechtag
-JWT_SECRET=<langer zufälliger String>
-PORT=3000
-```
+`server/.env` anpassen:
 
 JWT Secret generieren:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+```
+DB_HOST=localhost
+DB_USER=elternsprechtag
+DB_PASSWORD=sicheresPasswortVonOben
+DB_NAME=elternsprechtag
+JWT_SECRET=<langer zufälliger String>
+PORT=3000
 ```
 
 ### 4. Client bauen
@@ -90,11 +105,15 @@ sudo a2enmod proxy proxy_http proxy_wstunnel rewrite
 sudo systemctl restart apache2
 ```
 
-Virtual Host Konfiguration (z.B. `/etc/apache2/sites-available/elternsprechtag.conf`):
+Virtual Host Konfiguration (z.B. `/etc/apache2/sites-available/eltern.conf`):
+
+hier nur ein Beispiel für die config auf dem apache, auf dem der server läuft, im github
+ein Beispiel wie ich es auf dem vorgelagerten apache2-proxy gemacht habe
 
 ```apache
 <VirtualHost *:80>
     ServerName ihre-domain.de
+    ProxyPreserveHost On
 
     # Frontend (statische Dateien)
     DocumentRoot /var/www/html/elternsprechtag/client/dist
@@ -124,7 +143,7 @@ Virtual Host Konfiguration (z.B. `/etc/apache2/sites-available/elternsprechtag.c
 Site aktivieren:
 
 ```bash
-sudo a2ensite elternsprechtag
+sudo a2ensite eltern
 sudo systemctl reload apache2
 ```
 
@@ -141,7 +160,10 @@ After=network.target mariadb.service
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/html/elternsprechtag/server
-ExecStart=/usr/bin/node index.js
+EnvironmentFile=/var/www/html/elternsprechtag/server/.env
+ExecStart=/usr/local/bin/node index.js
+#achtung hier muss eine kopie des richtigen  node liegen
+#und dieses muss zugreifbar sein
 Restart=on-failure
 RestartSec=10
 StandardOutput=syslog
@@ -178,17 +200,18 @@ sudo journalctl -u elternsprechtag -f
 
 ### Globalen Admin anlegen
 
-Nach der Installation direkt in der Datenbank:
+Nach der Installation direkt in der Datenbank, erst
+Hash generieren (im server verzeichnis):
+
+```bash
+node -e "const b = require('bcrypt'); b.hash('IhrPasswort', 10).then(console.log)"
+```
+
+dann in die db
 
 ```sql
 INSERT INTO users (first_name, last_name, email, password_hash, role, auth_method)
 VALUES ('Admin', 'Name', 'admin@schule.de', '<bcrypt-hash>', 'global_admin', 'internal');
-```
-
-Hash generieren:
-
-```bash
-node -e "const b = require('bcrypt'); b.hash('IhrPasswort', 10).then(console.log)"
 ```
 
 ### Rollen
