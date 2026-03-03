@@ -150,7 +150,7 @@
         <div class="flex flex-column gap-1">
           <label>CSV Datei</label>
           <small class="text-color-secondary"
-            >Format: name,email,rolle (eine Zeile pro Lehrer)</small
+            >Format: name;vorname;email;rolle (eine Zeile pro Lehrer)</small
           >
           <FileUpload
             mode="basic"
@@ -354,10 +354,12 @@ async function importCsv() {
     formData.append('file', csvFile.value)
     formData.append('school_id', school_id)
     formData.append('sendEmail', csvSendEmail.value)
-    const res = await authFetch('/api/users/import', {
+    const user_stored = JSON.parse(localStorage.getItem('user') || 'null')
+    const res = await fetch('/api/users/import', {
       method: 'POST',
+      headers: { Authorization: `Bearer ${user_stored?.token}` },
       body: formData,
-    })
+   })
     const data = await res.json()
     if (res.ok) {
       showCsvDialog.value = false
