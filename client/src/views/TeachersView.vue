@@ -10,6 +10,12 @@
           @click="showCsvDialog = true"
         />
         <Button label="Neuer Lehrer" icon="pi pi-plus" @click="showDialog = true" />
+        <Button
+          label="Alle Lehrerlöschen"
+          icon="pi pi-trash"
+          severity="danger"
+          @click="deleteAllTeachers"
+        />
       </div>
     </div>
 
@@ -304,7 +310,17 @@ async function createTeacher() {
     loading.value = false
   }
 }
-
+//alle löschen, nur die Lehrer
+async function deleteAllTeachers() {
+  if (!confirm('Wirklich ALLE Lehrer löschen?')) return
+  loading.value = true
+  try {
+    await authFetch('/api/users/allTeachers', { method: 'DELETE' })
+    await loadTeachers()
+  } finally {
+    loading.value = false
+  }
+}
 //teacher editieren
 function editTeacher(teacher) {
   editForm.value = {
@@ -359,7 +375,7 @@ async function importCsv() {
       method: 'POST',
       headers: { Authorization: `Bearer ${user_stored?.token}` },
       body: formData,
-   })
+    })
     const data = await res.json()
     if (res.ok) {
       showCsvDialog.value = false

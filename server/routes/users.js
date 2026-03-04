@@ -175,7 +175,42 @@ router.get("/:id/teacherevents", authMiddleware, async (req, res) => {
   }
 });
 
-// User löschen
+//alle lehrer löschen
+//richtige reihenfolge wichtig, sonst hätte man ein
+//cascade delete in der Datenbank einbauen müssen
+//außerdem muss das vor einem einzelnen löschen liegen, da sonst
+//die route allTeachers von /:id abgefangen würde
+router.delete("/allTeachers", adminMiddleware, async (req, res) => {
+  const school_id =
+    req.user.role === "global_admin" ? null : req.user.school_id;
+
+  const condition = school_id
+    ? 'WHERE school_id = ? AND role = "teacher"'
+    : 'WHERE role = "teacher"';
+  const params = school_id ? [school_id] : [];
+
+  // Reihenfolge wichtig wegen Foreign Keys!
+  await db.query(
+    `DELETE s FROM slots s 
+    JOIN teacher_events te ON te.id = s.teacher_event_id 
+    JOIN users u ON u.id = te.teacher_id 
+    ${condition.replace("school_id", "u.school_id")}`,
+    params,
+  );
+
+  await db.query(
+    `DELETE te FROM teacher_events te 
+    JOIN users u ON u.id = te.teacher_id 
+    ${condition.replace("school_id", "u.school_id")}`,
+    params,
+  );
+
+  await db.query(`DELETE FROM users ${condition}`, params);
+
+  res.json({ success: true });
+});
+
+//jezt einzelnen löschen, auch hier cascade delete selbst machen.
 router.delete("/:id", adminMiddleware, async (req, res) => {
   try {
     const [[targetUser]] = await db.query(
@@ -209,7 +244,6 @@ router.delete("/:id", adminMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // User aktualisieren
 router.put("/:id", adminMiddleware, async (req, res) => {
   try {
@@ -348,12 +382,13 @@ router.post(
           [school_id],
         );
         for (const event of activeEvents) {
-          await db.query(
+          const [teResult] = await db.query(
             "INSERT INTO teacher_events (teacher_id, event_id, time_start, time_end, active) VALUES (?, ?, ?, ?, 1)",
             [result.insertId, event.id, event.time_start, event.time_end],
-          );
+          ); //interessant teResult.insertId kommt zurück, da sie als auto_increment definiert ist
+
           await generateSlots(
-            result.insertId,
+            teResult.insertId,
             event.time_start,
             event.time_end,
             event.slot_duration,

@@ -1,0 +1,5 @@
+Lehrer ohne slots finden:
+SELECT te.id, te.teacher_id, te.time_start, te.time_end 
+FROM teacher_events te
+LEFT JOIN slots s ON s.teacher_event_id = te.id
+WHERE s.id IS NULL;

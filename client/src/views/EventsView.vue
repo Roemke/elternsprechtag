@@ -74,7 +74,7 @@
           <DatePicker v-model="form.date" dateFormat="dd.mm.yy" showIcon />
         </div>
         <div class="flex gap-3">
-          <div class="flex flex-column gap-1 flex-1">
+          <div class="flex flex-column gap-1">
             <label>Von</label>
             <InputText v-model="form.time_start" class="time-input" placeholder="15:00" />
           </div>
@@ -116,11 +116,11 @@
           <DatePicker v-model="editForm.date" dateFormat="dd.mm.yy" showIcon />
         </div>
         <div class="flex gap-3">
-          <div class="flex flex-column gap-1 flex-1">
+          <div class="flex flex-column gap-1">
             <label>Von</label>
             <InputText v-model="editForm.time_start" class="time-input" />
           </div>
-          <div class="flex flex-column gap-1 flex-1">
+          <div class="flex flex-column gap-1">
             <label>Bis</label>
             <InputText v-model="editForm.time_end" class="time-input" />
           </div>
@@ -148,12 +148,12 @@
         </Column>
         <Column header="Von">
           <template #body="{ data }">
-            <InputText v-model="data.time_start" size="6" />
+            <InputText v-model="data.time_start" class="time-input" />
           </template>
         </Column>
         <Column header="Bis">
           <template #body="{ data }">
-            <InputText v-model="data.time_end" size="6" />
+            <InputText v-model="data.time_end" class="time-input" />
           </template>
         </Column>
         <Column header="Aktiv">

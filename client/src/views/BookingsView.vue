@@ -62,18 +62,19 @@
           </Select>
         </div>
         <!-- Schritt 3: Lehrer wählen -->
-        <div class="p-card p-1 mb-3" v-if="step == 3">
-          <h3>Lehrer wählen</h3>
-          <div class="p-1 flex flex-wrap gap-2">
-            <Button
-              v-for="teacher in teachers"
-              :key="teacher.id"
-              :label="`${teacher.last_name}, ${teacher.first_name}`"
-              :disabled="!teacher.active"
-              :outlined="selectedTeacher?.id !== teacher.id"
-              @click="onTeacherSelect(teacher)"
-            />
-          </div>
+        <h3 class="mt-0">Lehrer wählen</h3>
+        <div
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.5rem"
+          v-if="step === 3"
+        >
+          <Button
+            v-for="teacher in teachers"
+            :key="teacher.id"
+            :label="`${teacher.last_name}, ${teacher.first_name}`"
+            :disabled="!teacher.active"
+            :outlined="selectedTeacher?.id !== teacher.id"
+            @click="onTeacherSelect(teacher)"
+          />
         </div>
         <!-- Schritt 4: Slot wählen -->
         <div class="p-card p-1 mb-3" v-if="step >= 4 && !selectedSlot">
@@ -105,7 +106,6 @@
               }
             "
           />
-          -->
         </div>
 
         <!-- Schritt 5: Daten eingeben -->
@@ -194,7 +194,10 @@ function getCookieId() {
   const name = 'elternsprechtag_id'
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
   if (match) return match[2]
-  const id = crypto.randomUUID()
+  const id =
+    typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36)
   document.cookie = `${name}=${id}; max-age=31536000; path=/`
   return id
 }
@@ -388,7 +391,10 @@ watch(selectedEvent, (newVal, oldVal) => {
 
 onMounted(async () => {
   await loadSchools()
+  console.log('schools geladen:', schools.value)
   await loadMyBookings()
+  console.log('myBookings geladen:', myBookings.value)
+  /*
   socket.connect()
 
   socket.on('slot-booked', ({ slot_id }) => {
@@ -432,6 +438,7 @@ onMounted(async () => {
       slots.value = await res.json()
     }
   })
+    */
 })
 
 onUnmounted(() => {
