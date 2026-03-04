@@ -10,7 +10,7 @@
       </div>
       <!-- Info über gewählten Sprechtag -->
       <div
-        class="p-card p-4 mb-3 flex align-items-center justify-content-between"
+        class="p-card p-1 mb-3 flex align-items-center justify-content-between"
         v-if="selectedEvent"
       >
         <span>
@@ -62,9 +62,9 @@
           </Select>
         </div>
         <!-- Schritt 3: Lehrer wählen -->
-        <div class="p-card p-4 mb-3" v-if="step >= 3">
+        <div class="p-card p-1 mb-3" v-if="step == 3">
           <h3>Lehrer wählen</h3>
-          <div class="flex flex-wrap gap-2">
+          <div class="p-1 flex flex-wrap gap-2">
             <Button
               v-for="teacher in teachers"
               :key="teacher.id"
@@ -76,9 +76,10 @@
           </div>
         </div>
         <!-- Schritt 4: Slot wählen -->
-        <div class="p-card p-4 mb-3" v-if="step >= 4">
-          <h3>Termin wählen</h3>
-          <div class="flex flex-wrap gap-2">
+        <div class="p-card p-1 mb-3" v-if="step >= 4 && !selectedSlot">
+          <h3 class="inline">Termin wählen</h3>
+          <span> ( bei {{ terminLabelTeacher }}) </span>
+          <div class="mt-2 flex flex-wrap gap-2">
             <Button
               v-for="slot in slots"
               :key="slot.id"
@@ -90,11 +91,28 @@
             />
           </div>
         </div>
+        <div class="mt-3" v-if="step >= 4 && !selectedSlot">
+          <Button
+            label="Abbrechen"
+            severity="secondary"
+            outlined
+            icon="pi pi-times"
+            @click="
+              () => {
+                selectedTeacher = null
+                selectedSlot = null
+                step = 3
+              }
+            "
+          />
+          -->
+        </div>
 
         <!-- Schritt 5: Daten eingeben -->
-        <div class="p-card p-4 mb-3" v-if="step >= 4 && selectedSlot">
-          <h3>Ihre Daten</h3>
-          <div class="flex flex-column gap-3">
+        <div class="p-card p-1 mb-3" v-if="step >= 4 && selectedSlot">
+          <h3 class="inline">Ihre Daten</h3>
+          <span> – Termin: {{ terminLabelTeacher }}</span>
+          <div class="p-4 flex flex-column gap-3">
             <div class="flex flex-column gap-1">
               <label>Ihr Name</label>
               <InputText v-model="parentName" placeholder="Vor- und Nachname" />
@@ -104,15 +122,36 @@
               <InputText v-model="childName" placeholder="Vor- und Nachname" />
             </div>
             <Button label="Termin buchen" icon="pi pi-check" @click="bookSlot" :loading="loading" />
+            <!-- wg anderer Position nochmals -->
+            <Button
+              label="Abbrechen"
+              severity="secondary"
+              outlined
+              icon="pi pi-times"
+              @click="
+                () => {
+                  selectedTeacher = null
+                  selectedSlot = null
+                  step = 3
+                }
+              "
+            />
           </div>
         </div>
       </div>
 
       <!-- Meine Termine - immer sichtbar wenn vorhanden -->
       <div
-        class="p-card p-4 mt-3"
+        class="p-card p-2 mt-3"
         v-if="(myBookings.length > 0 || phase === 'booked') && selectedEvent"
       >
+        <Button
+          label="Termin buchen"
+          class="mt-3"
+          @click="startNewBooking"
+          v-if="phase === 'booked'"
+        />
+
         <h3>Meine gebuchten Termine</h3>
         <p v-if="myBookings.length === 0">Keine Termine vorhanden.</p>
         <DataTable :value="myBookings" stripedRows>
@@ -124,12 +163,6 @@
             </template>
           </Column>
         </DataTable>
-        <Button
-          label="Termin buchen"
-          class="mt-3"
-          @click="startNewBooking"
-          v-if="phase === 'booked'"
-        />
       </div>
     </div>
   </div>
@@ -143,8 +176,18 @@ import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Message from 'primevue/message'
+import { computed } from 'vue'
 import socket from '../utils/socket.js'
 import { formatTime } from '../utils/api.js'
+const terminLabelTeacher = computed(() => {
+  const teacher = selectedTeacher.value
+    ? ` ${selectedTeacher.value.first_name} ${selectedTeacher.value.last_name}`
+    : ''
+  const slot = selectedSlot.value
+    ? `, ${selectedSlot.value.start_time} – ${selectedSlot.value.end_time}`
+    : ''
+  return teacher + slot
+})
 
 // Cookie-ID generieren oder aus Cookie lesen
 function getCookieId() {
@@ -236,12 +279,14 @@ async function onEventChange() {
 }
 
 async function onTeacherSelect(teacher) {
+  console.log('Lehrer ausgewählt:', teacher.first_name, teacher.last_name, 'aktiv:', teacher.active)
   if (!teacher.active) return
   selectedTeacher.value = teacher
   selectedSlot.value = null
   const res = await fetch(`/api/bookings/event/${selectedEvent.value.id}/teacher/${teacher.id}`)
   slots.value = await res.json()
   step.value = 4
+  console.log(selectedSlot.value + ' type: ' + typeof selectedSlot.value)
 }
 
 async function bookSlot() {
@@ -404,6 +449,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.inline {
+  display: inline;
+}
 .booking-wrapper {
   min-height: 100vh;
   background: #f3f4f6;
