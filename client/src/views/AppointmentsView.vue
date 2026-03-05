@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -167,6 +167,8 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
+import socket from '../utils/socket.js'
+
 import { authFetch, formatTime } from '../utils/api.js'
 
 const user = JSON.parse(localStorage.getItem('user') || 'null')
@@ -182,6 +184,16 @@ const selectedEventAll = ref(null)
 const allBookings = ref([])
 
 const myTeacherEvents = ref([])
+
+watch(selectedEvent, (newVal, oldVal) => {
+  if (oldVal) socket.emit('leave-event', oldVal.id)
+  if (newVal) socket.emit('join-event', newVal.id)
+})
+
+watch(selectedEventAll, (newVal, oldVal) => {
+  if (oldVal) socket.emit('leave-event', oldVal.id)
+  if (newVal) socket.emit('join-event', newVal.id)
+})
 
 async function loadMyEvents() {
   const url = user?.role === 'global_admin' ? '/api/events' : `/api/events/school/${user.school_id}`
@@ -235,11 +247,11 @@ async function loadMyTeacherEvents() {
   const res = await authFetch(`/api/users/${user.id}/teacherevents`)
   const data = await res.json()
   myTeacherEvents.value = data.map((t) => ({
-     ...t,
-     active: !!t.active,
-     time_start:formatTime(t.time_start),
-     time_end: formatTime(t.time_end),
-    }))
+    ...t,
+    active: !!t.active,
+    time_start: formatTime(t.time_start),
+    time_end: formatTime(t.time_end),
+  }))
 }
 
 async function saveSlot(data) {
@@ -257,5 +269,31 @@ async function saveSlot(data) {
 onMounted(async () => {
   await loadMyEvents()
   await loadMyTeacherEvents()
+  //sockets dazu nehmen
+  socket.connect()
+
+  socket.on('slot-booked', async ({ slot_id }) => {
+    console.log('AppointmentsView - Slot gebucht:', slot_id)
+    await loadMySlots()
+    await loadAllBookings()
+  })
+
+  socket.on('slot-cancelled', async ({ slot_id }) => {
+    console.log('AppointmentsView - Slot storniert:', slot_id)
+    await loadMySlots()
+    await loadAllBookings()
+  })
+
+  socket.on('slots-generated', async () => {
+    console.log('AppointmentsView - Slots generiert')
+    await loadMySlots()
+    await loadAllBookings()
+  })
+})
+onUnmounted(() => {
+  socket.off('slot-booked')
+  socket.off('slot-cancelled')
+  socket.off('slots-generated')
+  socket.disconnect()
 })
 </script>

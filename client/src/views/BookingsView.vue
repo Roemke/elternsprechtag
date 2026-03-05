@@ -394,7 +394,7 @@ onMounted(async () => {
   console.log('schools geladen:', schools.value)
   await loadMyBookings()
   console.log('myBookings geladen:', myBookings.value)
-  /*
+
   socket.connect()
 
   socket.on('slot-booked', ({ slot_id }) => {
@@ -438,7 +438,6 @@ onMounted(async () => {
       slots.value = await res.json()
     }
   })
-    */
 })
 
 onUnmounted(() => {
