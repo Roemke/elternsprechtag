@@ -7,6 +7,7 @@ import AppointmentsView from '../views/AppointmentsView.vue'
 import EventsView from '../views/EventsView.vue'
 import BookingsView from '../views/BookingsView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import HelpView from '../views/HelpView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +24,7 @@ const router = createRouter({
         { path: 'appointments', component: AppointmentsView },
         { path: 'events', component: EventsView },
         { path: 'profile', component: ProfileView },
+        { path: 'help', component: HelpView },
       ],
       /*
       Der Router macht dann folgendes:

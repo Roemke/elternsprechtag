@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Menubar :model="menuItems" class="mb-4 fixed top-0 left-0 right-0 z-5 ">
+    <Menubar :model="menuItems" class="mb-4 fixed top-0 left-0 right-0 z-5">
       <template #start>
         <span class="font-bold text-xl mr-4">🏫 Elternsprechtag</span>
       </template>
@@ -63,6 +63,13 @@ const menuItems = computed(() => {
     icon: 'pi pi-user',
     command: () => router.push('/app/profile'),
   })
+
+  items.push({
+    label: 'Hilfe/Informationen ',
+    icon: 'pi pi-question-circle',
+    command: () => router.push('/app/help'),
+  })
+
   return items
 })
 
