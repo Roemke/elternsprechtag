@@ -6,11 +6,17 @@
       </template>
       <template #end>
         <span class="mr-3 text-sm text-color-secondary">{{ user?.name }}</span>
-        <Button v-if="user" label="Abmelden" icon="pi pi-sign-out" severity="secondary" @click="logout" />
+        <Button
+          v-if="user"
+          label="Abmelden"
+          icon="pi pi-sign-out"
+          severity="secondary"
+          @click="logout"
+        />
       </template>
     </Menubar>
 
-    <div class="p-7">
+    <div class="pt-7 p-2 md:p-7">
       <slot />
     </div>
   </div>

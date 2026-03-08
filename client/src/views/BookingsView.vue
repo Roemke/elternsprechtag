@@ -9,7 +9,7 @@
       </div>
       <!-- Info über gewählten Sprechtag -->
       <div
-        class="p-card p-1 mb-3  flex align-items-center justify-content-between"
+        class="p-card p-1 mb-3 flex align-items-center justify-content-between"
         v-if="selectedEvent"
       >
         <span>
@@ -462,9 +462,19 @@ onUnmounted(() => {
   background: #f3f4f6;
   padding: 1rem;
 }
+@media (max-width: 600px) {
+  .booking-wrapper {
+    padding: 0.5rem;
+  }
+}
 
 .booking-container {
   max-width: 700px;
   margin: 0 auto;
+}
+@media (max-width: 600px) {
+  .booking-container {
+    max-width: 100%;
+  }
 }
 </style>
