@@ -6,7 +6,7 @@
       </template>
       <template #end>
         <span class="mr-3 text-sm text-color-secondary">{{ user?.name }}</span>
-        <Button label="Abmelden" icon="pi pi-sign-out" severity="secondary" @click="logout" />
+        <Button v-if="user" label="Abmelden" icon="pi pi-sign-out" severity="secondary" @click="logout" />
       </template>
     </Menubar>
 
@@ -24,6 +24,11 @@ import Button from 'primevue/button'
 
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || 'null')
+const parent = !(
+  user?.role === 'global_admin' ||
+  user?.role === 'school_admin' ||
+  user?.role === 'teacher'
+)
 
 const menuItems = computed(() => {
   const items = []
@@ -53,21 +58,28 @@ const menuItems = computed(() => {
     )
   }
   // Termine immer sichtbar
-  items.push({
-    label: 'Termine verwalten',
-    icon: 'pi pi-calendar',
-    command: () => router.push('/app/appointments'),
-  })
-  items.push({
-    label: 'Profil',
-    icon: 'pi pi-user',
-    command: () => router.push('/app/profile'),
-  })
+  if (!parent) {
+    items.push({
+      label: 'Termine verwalten',
+      icon: 'pi pi-calendar',
+      command: () => router.push('/app/appointments'),
+    })
+    items.push({
+      label: 'Profil',
+      icon: 'pi pi-user',
+      command: () => router.push('/app/profile'),
+    })
+  }
 
+  items.push({
+    label: 'Termin buchen',
+    icon: 'pi pi-book',
+    command: () => router.push('/booking'),
+  })
   items.push({
     label: 'Hilfe/Informationen ',
     icon: 'pi pi-question-circle',
-    command: () => router.push('/app/help'),
+    command: () => router.push('/help'),
   })
 
   return items

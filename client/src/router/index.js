@@ -14,7 +14,18 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/login' },
     { path: '/login', component: LoginView },
-    { path: '/booking', component: BookingsView },
+    { path: '/booking',
+      component: AppView,
+      children: [
+        { path: '', component: BookingsView }
+      ]
+    },
+    { path: '/help',
+      component: AppView,
+      children: [
+        { path: '', component: HelpView }
+      ]
+    },
     {
       path: '/app',
       component: AppView,
@@ -24,7 +35,6 @@ const router = createRouter({
         { path: 'appointments', component: AppointmentsView },
         { path: 'events', component: EventsView },
         { path: 'profile', component: ProfileView },
-        { path: 'help', component: HelpView },
       ],
       /*
       Der Router macht dann folgendes:

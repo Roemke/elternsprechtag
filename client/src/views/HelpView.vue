@@ -4,8 +4,8 @@
 
     <Tabs value="0">
       <TabList>
-        <Tab value="0">👨‍👩‍👧 Für Eltern</Tab>
-        <Tab value="1">👩‍🏫 Für Lehrkräfte</Tab>
+        <Tab value="0">Für Eltern</Tab>
+        <Tab value="1">Für Lehrkräfte</Tab>
         <Tab value="2">🔒 Datenschutz</Tab>
       </TabList>
 
@@ -13,6 +13,22 @@
         <!-- Tab Eltern -->
         <TabPanel value="0">
           <div class="flex flex-column gap-4 mt-3">
+            <div class="p-card p-4">
+              <h3 class="mt-0">⚠️ Wichtige Hinweise zur Bedienung</h3>
+              <ul class="line-height-3">
+                <li>
+                  Bitte benutzen Sie <strong>nicht den Zurück-Button</strong> des Browsers — nutzen
+                  Sie stattdessen die Schaltflächen auf der Seite.
+                </li>
+                <li>
+                  Ihre Termine sind an diesen <strong>Browser und dieses Gerät</strong> gebunden.
+                  Wenn Sie das Gerät wechseln, sind Ihre Buchungen dort nicht sichtbar, sie sind
+                  aber weiterhin gültig und bei der Kollegin bzw. dem Kollegen gebucht.
+                  (Siehe Cookie-Abschnitt unter Datenschutz.)
+                </li>
+                <li>Belegte Zeitslots (grau) können nicht gebucht werden.</li>
+              </ul>
+            </div>
             <div class="p-card p-4">
               <h3 class="mt-0">🗓️ Wie buche ich einen Termin?</h3>
               <ol class="line-height-3">
@@ -45,55 +61,55 @@
                 <strong>🗑️ Papierkorb-Symbol</strong> können Sie einen Termin löschen.
               </p>
             </div>
-
-            <div class="p-card p-4">
-              <h3 class="mt-0">⚠️ Wichtige Hinweise zur Bedienung</h3>
-              <ul class="line-height-3">
-                <li>
-                  Bitte benutzen Sie <strong>nicht den Zurück-Button</strong> des Browsers — nutzen
-                  Sie stattdessen die Schaltflächen auf der Seite.
-                </li>
-                <li>
-                  Ihre Termine sind an diesen <strong>Browser und dieses Gerät</strong> gebunden.
-                  Wenn Sie das Gerät wechseln, sind Ihre Buchungen dort nicht sichtbar.
-                </li>
-                <li>Belegte Zeitslots (grau) können nicht gebucht werden.</li>
-              </ul>
-            </div>
           </div>
         </TabPanel>
 
         <!-- Tab Lehrkräfte -->
         <TabPanel value="1">
           <div class="flex flex-column gap-4 mt-3">
-            <div class="p-card p-4">
-              <h3 class="mt-0">📋 Meine Termine einsehen</h3>
+            <div class="p-card p-2">
+              <h3 class="mt-0">⚠️ Wichtiger Hinweise zur Bedienung</h3>
+              Nutzen Sie nicht den Zurück-Button des Browsers — nutzen Sie stattdessen die
+              Schaltflächen auf der Seite.
+            </div>
+            <div class="p-card p-2">
+              <h3 class="mt-0">📋 Termine verwalten</h3>
               <p class="line-height-3">
                 Unter <strong>Termine → Meine Termine</strong> sehen Sie alle gebuchten Termine für
-                den gewählten Sprechtag. Sie können dort auch Eltern- und Kindnamen direkt
-                bearbeiten.
+                den gewählten Sprechtag. Sie können Termin-Buchungen löschen, Sie können auch Eintragungen hinzufügen,
+                diese werden dann sofort gespeichert und sind für Buchungen blockiert.
               </p>
             </div>
 
-            <div class="p-card p-4">
+            <div class="p-card p-2">
               <h3 class="mt-0">⏰ Verfügbarkeit anpassen</h3>
               <p class="line-height-3">
-                Unter <strong>Termine → Meine Verfügbarkeit</strong> können Sie Ihre Von/Bis-Zeiten
+                Unter <strong>Termine verwalten → Meine Verfügbarkeit</strong> können Sie Ihre Von/Bis-Zeiten
                 pro Sprechtag individuell anpassen und sich bei Bedarf als <em>inaktiv</em> setzen
-                (dann sind Sie für Eltern nicht buchbar).
+                (dann sind Sie für Eltern nicht buchbar). Bei einer Verkürzung der verfügbaren Zeiten werden
+                automatisch alle Termine außerhalb der neuen Zeiten storniert, Eltern können nicht benachrichtigt
+                werden.
               </p>
             </div>
 
-            <div class="p-card p-4">
-              <h3 class="mt-0">🔐 Login & Passwort</h3>
+            <div class="p-card p-2">
+              <h3 class="mt-0">🔐 Profil</h3>
               <p class="line-height-3">
                 Ihr Passwort wurde beim Import automatisch generiert. Sie können es unter
-                <strong>Einstellungen</strong> jederzeit ändern. Bei Problemen wenden Sie sich bitte
+                <strong>Profil</strong> jederzeit ändern. Bei Problemen wenden Sie sich bitte
                 an Ihre Schuladministration.
               </p>
             </div>
-
-            <div class="p-card p-4">
+            <div class="p-card p-2">
+              <h3 class="mt-0">Termin buchen</h3>
+              <p class="line-height-3">
+                Dieser Punkt ist für Lehrkräfte nicht relevant, da sie ihre eigenen Termine nicht buchen sollten.
+                Sie sehen hier die Ansicht der Eltern und könnten natürlich einen Termin bei einem Kollegen
+                oder einer Kollegin buchen,
+                das ist aber wohl kein üblicher Anwendungsfall :-).
+              </p>
+            </div>
+            <div class="p-card p-2">
               <h3 class="mt-0">📊 Alle Termine (nur Admins)</h3>
               <p class="line-height-3">
                 Schuladministratoren sehen unter <strong>Termine → Alle Termine</strong> die
@@ -106,7 +122,7 @@
         <!-- Tab Datenschutz -->
         <TabPanel value="2">
           <div class="flex flex-column gap-4 mt-3">
-            <div class="p-card p-4">
+            <div class="p-card p-2">
               <h3 class="mt-0">📦 Welche Daten werden gespeichert?</h3>
               <p class="line-height-3"><strong>Für Eltern:</strong></p>
               <ul class="line-height-3">
@@ -121,24 +137,28 @@
               </ul>
             </div>
 
-            <div class="p-card p-4">
+            <div class="p-card p-2">
               <h3 class="mt-0">🗑️ Wann werden die Daten gelöscht?</h3>
               <ul class="line-height-3">
                 <li><strong>Buchungen von Eltern</strong> werden nach dem Sprechtag gelöscht.</li>
                 <li>
                   <strong>Zeitslots</strong> werden mit dem Sprechtag deaktiviert und bereinigt.
                 </li>
-                <li>Das Browser-Cookie auf Ihrem Gerät läuft nach einem Jahr automatisch ab.</li>
+                <li>
+                  Das Browser-Cookie auf Ihrem Gerät läuft nach einem Jahr automatisch ab, Sie
+                  können es jederzeit manuell löschen, dann werden in jedoch auch
+                  Ihre Termin-Buchungen nicht mehr angezeigt.
+                </li>
               </ul>
             </div>
 
-            <div class="p-card p-4">
+            <div class="p-card p-2">
               <h3 class="mt-0">🍪 Was ist dieses Cookie?</h3>
               <p class="line-height-3">
                 Damit Sie Ihre Buchungen wiederfinden, speichert die Anwendung eine zufällige,
                 anonyme ID in Ihrem Browser (Cookie). Diese ID enthält
                 <strong>keine persönlichen Daten</strong>
-                und wird nur verwendet, um Ihre Termine auf diesem Gerät anzuzeigen.
+                und wird nur verwendet, um Ihre Termine auf diesem Gerät in diesem Browser anzuzeigen.
               </p>
             </div>
           </div>

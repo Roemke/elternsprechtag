@@ -10,6 +10,7 @@
           @click="showCsvDialog = true"
         />
         <Button label="Neuer Lehrer" icon="pi pi-plus" @click="showDialog = true" />
+        <Button label="PW: set all" icon="pi pi-refresh" @click="showDialogPasswortReset = true" />
         <Button
           label="Alle Lehrerlöschen"
           icon="pi pi-trash"
@@ -178,7 +179,7 @@
       </template>
     </Dialog>
 
-    <!-- Passwort Liste nach CSV Import -->
+    <!-- Passwort Liste nach CSV Import, oder setzen aller pw -->
     <Dialog
       v-model:visible="showPasswordList"
       header="Generierte Passwörter"
@@ -194,6 +195,41 @@
       <template #footer>
         <Button label="Als CSV herunterladen" icon="pi pi-download" @click="downloadPasswordList" />
         <Button label="Schließen" severity="secondary" @click="showPasswordList = false" />
+      </template>
+    </Dialog>
+
+    <!-- alle passwörter setzen -->
+    <Dialog
+      v-model:visible="showDialogPasswortReset"
+      header="Alle Passworte zurücksetzen"
+      modal
+      style="width: 450px"
+    >
+      <div class="flex flex-column gap-3 pt-2">
+        <div class="flex flex-column gap-1" v-if="user?.role === 'global_admin'">
+          <label>Schule</label>
+          <Select
+            v-model="form.school_id"
+            :options="schools"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Schule wählen"
+          />
+        </div>
+        <div class="p-card p-2">
+          Alle Lehrer-Passwörter dieser Schule werden auf ein neues, automatisch generiertes
+          Passwort zurückgesetzt. Die neuen Passwörter werden in einer Liste angezeigt, die Sie
+          herunterladen können. Sie sollten die neuen Passwörter den Lehrern mitteilen, damit sie
+          sich wieder anmelden können.
+        </div>
+        <div class="flex flex-column gap-1">
+                  <label>Neues Passwort</label>
+                  <Password v-model="newPassword" :feedback="true" toggleMask fluid />
+                </div>
+      </div>
+      <template #footer>
+        <Button label="Abbrechen" severity="secondary" @click="showDialogPasswortReset = false" />
+        <Button label="Speichern" icon="pi pi-check" @click="setAllPasswords" :loading="loading" />
       </template>
     </Dialog>
   </div>
@@ -216,12 +252,14 @@ const teachers = ref([])
 const schools = ref([])
 const showDialog = ref(false)
 const showCsvDialog = ref(false)
+const showDialogPasswortReset = ref(false)
 const showPasswordList = ref(false)
 const passwordList = ref([])
 const loading = ref(false)
 const csvSchoolId = ref(null)
 const csvSendEmail = ref(false)
 const csvFile = ref(null)
+const newPassword = ref(null);
 
 const form = ref({
   school_id: null,
@@ -284,7 +322,8 @@ async function loadSchools() {
 
 async function createTeacher() {
   const school_id = user?.role === 'global_admin' ? form.value.school_id : user.school_id
-  if (!form.value.first_name || !form.value.last_name || !form.value.email || !form.value.school_id)
+  console.log('Creating teacher with data:', { ...form.value, school_id })
+  if (!form.value.first_name || !form.value.last_name || !form.value.email || !school_id)
     return
 
   loading.value = true
@@ -317,6 +356,29 @@ async function deleteAllTeachers() {
   try {
     await authFetch('/api/users/allTeachers', { method: 'DELETE' })
     await loadTeachers()
+  } finally {
+    loading.value = false
+  }
+}
+//alle Passwörter zurücksetzen
+async function setAllPasswords()
+{
+  const school_id = user?.role === 'global_admin' ? form.value.school_id : user.school_id
+  if (!school_id) return
+  loading.value = true
+  try {
+    const res = await authFetch('/api/users/all/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_id , newPassword: newPassword.value }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      showDialogPasswortReset.value = false
+      passwordList.value = data.passwords
+      showPasswordList.value = true
+      await loadTeachers()
+    }
   } finally {
     loading.value = false
   }

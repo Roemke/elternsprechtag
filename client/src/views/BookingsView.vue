@@ -1,7 +1,6 @@
 <template>
   <div class="booking-wrapper">
     <div class="booking-container">
-      <h2 class="text-center mb-4">🏫 Elternsprechtag – Terminbuchung</h2>
       <div class="p-card p-4 mb-3" v-if="!selectedEvent && events.length === 0 && !loading">
         <Message severity="info">
           Aktuell sind leider keine Sprechtage zur Buchung verfügbar. Bitte schauen Sie später
@@ -10,7 +9,7 @@
       </div>
       <!-- Info über gewählten Sprechtag -->
       <div
-        class="p-card p-1 mb-3 flex align-items-center justify-content-between"
+        class="p-card p-1 mb-3  flex align-items-center justify-content-between"
         v-if="selectedEvent"
       >
         <span>
@@ -28,7 +27,7 @@
       <div v-if="phase === 'select'">
         <!-- Schritt 1: Schule wählen -->
         <!-- Schritt 1: Schule wählen - nur wenn mehrere Schulen -->
-        <div class="p-card p-4 mb-3" v-if="step === 1 && multipleSchools && !selectedSchool">
+        <div class="p-card p-1 mb-3" v-if="step === 1 && multipleSchools && !selectedSchool">
           <h3>Schule wählen</h3>
           <Select
             v-model="selectedSchool"
@@ -62,7 +61,7 @@
           </Select>
         </div>
         <!-- Schritt 3: Lehrer wählen -->
-        <h3 class="mt-0">Lehrer wählen</h3>
+        <h3 class="mt-0" v-if="step === 3">Lehrer wählen</h3>
         <div
           style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.5rem"
           v-if="step === 3"
@@ -461,7 +460,7 @@ onUnmounted(() => {
 .booking-wrapper {
   min-height: 100vh;
   background: #f3f4f6;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .booking-container {

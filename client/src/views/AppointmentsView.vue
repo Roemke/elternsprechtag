@@ -200,6 +200,13 @@ async function loadMyEvents() {
   const res = await authFetch(url)
   myEvents.value = await res.json()
   allEvents.value = myEvents.value
+  // Vorselektieren wenn nur ein Sprechtag
+  if (myEvents.value.length === 1) {
+    selectedEvent.value = myEvents.value[0]
+    selectedEventAll.value = myEvents.value[0]
+    await loadMySlots()
+    await loadAllBookings()
+  }
 }
 
 async function loadMySlots() {

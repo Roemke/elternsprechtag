@@ -29,13 +29,20 @@ router.get("/school/:school_id", authMiddleware, async (req, res) => {
 
 // Lehrer anlegen (durch Schuladmin)
 router.post("/", adminMiddleware, async (req, res) => {
+  console.log("hello to post of users");
   try {
     const school_id =
       req.user.role === "global_admin"
         ? req.body.school_id
         : req.user.school_id;
     const { first_name, last_name, email, role } = req.body;
-
+    console.log("Creating user with data:", {
+      first_name,
+      last_name,
+      email,
+      role,
+      school_id,
+    });
     //passwort generieren: schulname + aktuelles jahr
     const [schoolRows] = await db.query(
       "SELECT name FROM schools WHERE id = ?",
@@ -57,12 +64,12 @@ router.post("/", adminMiddleware, async (req, res) => {
       [school_id],
     );
     for (const event of activeEvents) {
-      await db.query(
+      const [teResult] = await db.query(
         "INSERT INTO teacher_events (teacher_id, event_id, time_start, time_end, active) VALUES (?, ?, ?, ?, 1)",
         [result.insertId, event.id, event.time_start, event.time_end],
       );
       const count = await generateSlots(
-        result.insertId,
+        teResult.insertId,
         event.time_start,
         event.time_end,
         event.slot_duration,
@@ -121,6 +128,37 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//alle passwörter auf einen Wert setzen
+router.put("/all/password", adminMiddleware, async (req, res) => {
+    try {
+    const school_id = req.user.role === 'global_admin' 
+      ? req.body.school_id 
+      : req.user.school_id
+    const { newPassword } = req.body
+
+    if (!newPassword) return res.status(400).json({ error: 'Kein Passwort angegeben' })
+
+    const password_hash = await bcrypt.hash(newPassword, 10)
+
+    await db.query(
+      'UPDATE users SET password_hash = ? WHERE school_id = ? AND role = "teacher"',
+      [password_hash, school_id]
+    )
+
+    // Lehrer zurückgeben damit man sieht wer betroffen war
+    const [teachers] = await db.query(
+      'SELECT first_name, last_name, email FROM users WHERE school_id = ? AND role = "teacher"',
+      [school_id]
+    )
+
+    res.json({ 
+      success: true, 
+      passwords: teachers.map(t => ({ ...t, password: newPassword }))
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 // Passwort ändern
 router.put("/:id/password", authMiddleware, async (req, res) => {
   try {
