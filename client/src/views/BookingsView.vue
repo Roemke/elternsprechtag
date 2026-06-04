@@ -414,6 +414,11 @@ onMounted(async () => {
     const slot = slots.value.find((s) => s.id === id)
     console.log('Slot gefunden:', slot)
     if (slot) slot.booked = false
+    myBookings.value = myBookings.value.filter((b) => b.slot_id !== id)
+  	// phase zurücksetzen wenn keine Buchungen mehr
+  	if (myBookings.value.length === 0) {
+    	phase.value = 'select'
+  	}
   })
 
   socket.on('slots-generated', async ({ teacher_event_id }) => {
