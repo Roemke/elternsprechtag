@@ -44,7 +44,7 @@ app.use("/api/bookings", bookingsRouter);
 //websocket für Echtzeit-Updates bei Buchungen, ggf. anderem
 
 const PORT = 3000;
-server.listen(PORT, () => {
+server.listen(PORT, "127.0.0.1", () => {
   console.log(`Server läuft auf Port ${PORT}`);
   console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'gesetzt' : 'FEHLT')
 
