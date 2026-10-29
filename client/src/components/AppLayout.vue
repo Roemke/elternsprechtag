@@ -18,6 +18,7 @@
 
     <div class="pt-7 p-2 md:p-7">
       <slot />
+      <footer class="text-center text-sm mt-6"><a href="https://moodle.bk-rheinbach.net/impressum.html" target="_blank" rel="noopener">Impressum</a></footer>
     </div>
   </div>
 </template>

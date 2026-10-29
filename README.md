@@ -116,7 +116,7 @@ ein Beispiel wie ich es auf dem vorgelagerten apache2-proxy gemacht habe
     ProxyPreserveHost On
 
     # Frontend (statische Dateien)
-    DocumentRoot /var/www/html/elternsprechtag/client/dist
+    DocumentRoot /var/www/elternsprechtag/client/dist
 
     # API Anfragen an Node weiterleiten
     ProxyPass /api http://localhost:3000/api
@@ -131,7 +131,7 @@ ein Beispiel wie ich es auf dem vorgelagerten apache2-proxy gemacht habe
     RewriteRule ^/socket.io/(.*) ws://localhost:3000/socket.io/$1 [P,L]
 
     # Vue Router – alle Anfragen auf index.html umleiten
-    <Directory /var/www/html/elternsprechtag/client/dist>
+    <Directory /var/www/elternsprechtag/client/dist>
         Options -Indexes
         AllowOverride All
         Require all granted
@@ -159,8 +159,8 @@ After=network.target mariadb.service
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/html/elternsprechtag/server
-EnvironmentFile=/var/www/html/elternsprechtag/server/.env
+WorkingDirectory=/var/www/elternsprechtag/server
+EnvironmentFile=/var/www/elternsprechtag/server/.env
 ExecStart=/usr/local/bin/node index.js
 #achtung hier muss eine kopie des richtigen  node liegen
 #und dieses muss zugreifbar sein

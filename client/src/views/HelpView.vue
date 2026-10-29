@@ -161,6 +161,30 @@
                 und wird nur verwendet, um Ihre Termine auf diesem Gerät in diesem Browser anzuzeigen.
               </p>
             </div>
+            <div class="p-card p-2">
+              <h3 class="mt-0">🏫 Verantwortlich und Ihre Rechte</h3>
+              <p class="line-height-3">
+                Verantwortlich: Glasfachschule NRW, Berufskolleg Glas · Technik · Medien · Design,
+                Zu den Fichten 19, 53359 Rheinbach.<br>
+                Datenschutzbeauftragter für Schulen, Schulamt für den Rhein-Sieg-Kreis,
+                Kaiser-Wilhelm-Platz 1, 53721 Siegburg, Tel. 02241/13-0,
+                <a href="mailto:datenschutz-schulen@rhein-sieg-kreis.de">datenschutz-schulen@rhein-sieg-kreis.de</a>
+              </p>
+              <p class="line-height-3">
+                Die Verarbeitung dient der Organisation des Elternsprechtags und ist zur Erfüllung
+                der der Schule übertragenen Aufgaben erforderlich (Art. 6 Abs. 1 lit. e DSGVO in
+                Verbindung mit § 120 SchulG NRW).
+              </p>
+              <p class="line-height-3">
+                Der Webserver protokolliert technisch bedingt Aufrufe (IP-Adresse, Zeitpunkt,
+                aufgerufene Seite). Diese Protokolle werden nach 14 Tagen automatisch gelöscht.
+              </p>
+              <p class="line-height-3">
+                Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der
+                Verarbeitung und Widerspruch. Beschwerden können Sie an die Landesbeauftragte für
+                Datenschutz und Informationsfreiheit Nordrhein-Westfalen richten.
+              </p>
+            </div>
           </div>
         </TabPanel>
       </TabPanels>
